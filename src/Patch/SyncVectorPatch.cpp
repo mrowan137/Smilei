@@ -277,24 +277,26 @@ void SyncVectorPatch::sumAllComponents( std::vector<Field *> &fields, VectorPatc
         for( unsigned int ifield=istart ; ifield<iend ; ifield++ ) {
             int ipatch = vecPatches.LocalxIdx[ ifield-icomp*nFieldLocalx ];
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[0][0] ) {
-                pt1 = &( fields[ vecPatches( ipatch )->neighbor_[0][0]-h0+icomp*nPatches ]->data_[size[0]*ny_*nz_] );
+                //pt1 = &( fields[ vecPatches( ipatch )->neighbor_[0][0]-h0+icomp*nPatches ]->data_[size[0]*ny_*nz_] );
+                pt1 = &( fields[ vecPatches( ipatch )->neighbor_[0][0]-h0+icomp*nPatches ]->data_[0] );
                 pt2 = &( vecPatches.densitiesLocalx[ifield]->data_[0] );
                 //Sum 2 ==> 1
 
-                const unsigned int last = gsp[0] * ny_ * nz_;
+                const unsigned int start_pt1 = size[0] * ny_ * nz_;
+                const unsigned int data_size = gsp[0] * ny_ * nz_;
 
 #if defined( SMILEI_ACCELERATOR_GPU_OACC )
-                //int ptsize = vecPatches.densitiesLocalx[ifield]->size();
+                int ptsize = vecPatches.densitiesLocalx[ifield]->size();
                 //int nspace0 = size[0];
-                #pragma acc parallel if ( is_memory_on_device) present(pt1,pt2)  //(pt1[0-nspace0*ny_*nz_:ptsize],pt2[0:ptsize])
+                #pragma acc parallel if ( is_memory_on_device) present(pt1[0:ptsize],pt2[0:ptsize])
                 #pragma acc loop worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                 #pragma omp target if( is_memory_on_device )
                 #pragma omp teams distribute parallel for
 #endif
-                for( unsigned int i = 0; i < last; i++ ) {
-                    pt1[i] += pt2[i];
-                    pt2[i]  = pt1[i];
+                for( unsigned int i = 0; i < data_size; i++ ) {
+                    pt1[start_pt1 + i] += pt2[i];
+                    pt2[i]  = pt1[start_pt1 + i];
                 }
                 //Copy back the results to 2
                 //memcpy( pt2, pt1, gsp[0]*ny_*nz_*sizeof( double ) );
@@ -387,26 +389,28 @@ void SyncVectorPatch::sumAllComponents( std::vector<Field *> &fields, VectorPatc
                 int ipatch = vecPatches.LocalyIdx[ ifield-icomp*nFieldLocaly ];
                 if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[1][0] ) {
                     //The patch to the south belongs to the same MPI process than I.
-                    pt1 = &( fields[vecPatches( ipatch )->neighbor_[1][0]-h0+icomp*nPatches]->data_[size[1]*nz_] );
+                    //pt1 = &( fields[vecPatches( ipatch )->neighbor_[1][0]-h0+icomp*nPatches]->data_[size[1]*nz_] );
+                    pt1 = &( fields[vecPatches( ipatch )->neighbor_[1][0]-h0+icomp*nPatches]->data_[0] );
                     pt2 = &( vecPatches.densitiesLocaly[ifield]->data_[0] );
 
-                    const unsigned int outer_last   = nx_ * ny_ * nz_;
+                    const unsigned int outer_data_size   = nx_ * ny_ * nz_;
                     const unsigned int outer_stride = ny_ * nz_;
-                    const unsigned int inner_last   = gsp[1] * nz_;
+                    const unsigned int inner_data_size   = gsp[1] * nz_;
+                    const unsigned int start_pt1 = size[1]*nz_;
 
 #if defined( SMILEI_ACCELERATOR_GPU_OACC )
-                    //int ptsize = vecPatches.densitiesLocaly[ifield]->size();
+                    int ptsize = vecPatches.densitiesLocaly[ifield]->size();
                     //int blabla = size[1];
-                    #pragma acc parallel if (is_memory_on_device) present(pt1,pt2)  //(pt1[0-blabla*nz_:ptsize],pt2[0:ptsize])
+                    #pragma acc parallel if (is_memory_on_device) present(pt1[0:ptsize],pt2[0:ptsize])
                     #pragma acc loop worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                     #pragma omp target if( is_memory_on_device )
                     #pragma omp teams distribute parallel for collapse(2)
 #endif
-                    for( unsigned int j = 0; j < outer_last; j += outer_stride ) {
-                        for( unsigned int i = 0; i < inner_last; i++ ) {
-                            pt1[i+j] += pt2[i+j];
-                            pt2[i+j]  = pt1[i+j];
+                    for( unsigned int j = 0; j < outer_data_size; j += outer_stride ) {
+                        for( unsigned int i = 0; i < inner_data_size; i++ ) {
+                            pt1[start_pt1 + i+j] += pt2[i+j];
+                            pt2[i+j]  = pt1[start_pt1 + i+j];
                         }
                         //memcpy( pt2, pt1, gsp[1]*nz_*sizeof( double ) );
                         //pt1 += ny_*nz_;
@@ -500,26 +504,28 @@ void SyncVectorPatch::sumAllComponents( std::vector<Field *> &fields, VectorPatc
                     int ipatch = vecPatches.LocalzIdx[ ifield-icomp*nFieldLocalz ];
                     if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[2][0] ) {
                         //The patch below me belongs to the same MPI process than I.
-                        pt1 = &( fields[vecPatches( ipatch )->neighbor_[2][0]-h0+icomp*nPatches]->data_[size[2]] );
+                        //pt1 = &( fields[vecPatches( ipatch )->neighbor_[2][0]-h0+icomp*nPatches]->data_[size[2]] );
+                        pt1 = &( fields[vecPatches( ipatch )->neighbor_[2][0]-h0+icomp*nPatches]->data_[0] );
                         pt2 = &( vecPatches.densitiesLocalz[ifield]->data_[0] );
 
-                        const unsigned int outer_last   = nx_ * ny_ * nz_;
+                        const unsigned int outer_data_size   = nx_ * ny_ * nz_;
                         const unsigned int outer_stride = nz_;
-                        const unsigned int inner_last   = gsp[2];
+                        const unsigned int inner_data_size   = gsp[2];
+                        const unsigned int start_pt1 = size[2];
 
 #if defined( SMILEI_ACCELERATOR_GPU_OACC )
                         //int ptsize = vecPatches.densitiesLocalz[ifield]->size();
                         //int blabla = size[2];
-                        #pragma acc parallel if (is_memory_on_device) present(pt1,pt2)  //(pt1[0-blabla:ptsize],pt2[0:ptsize])
+                        #pragma acc parallel if (is_memory_on_device) present(pt1[0:outer_data_size],pt2[0:outer_data_size])  //(pt1[0-blabla:ptsize],pt2[0:ptsize])
                         #pragma acc loop worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                         #pragma omp target if( is_memory_on_device )
                         #pragma omp teams distribute parallel for collapse( 2 )
 #endif
-                        for( unsigned int j = 0; j < outer_last; j += outer_stride ) {
-                            for( unsigned int i = 0; i < inner_last; i++ ) {
-                                pt1[i+j] += pt2[i+j];
-                                pt2[i+j] =  pt1[i+j];
+                        for( unsigned int j = 0; j < outer_data_size; j += outer_stride ) {
+                            for( unsigned int i = 0; i < inner_data_size; i++ ) {
+                                pt1[start_pt1 + i+j] += pt2[i+j];
+                                pt2[i+j] =  pt1[start_pt1 + i+j];
                             }
                         }
                     }
@@ -1146,12 +1152,15 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[2][0] ) {
                 field1 = static_cast<F *>( fields[vecPatches( ipatch )->neighbor_[2][0]-h0]  );
                 field2 = static_cast<F *>( fields[ipatch] );
-                pt1 = &( *field1 )( size[2] );
+                //pt1 = &( *field1 )( size[2] );
+                pt1 = &( *field1 )( 0 );
                 pt2 = &( *field2 )( 0 );
+
+                const unsigned int start_pt1 = size[2];
 #ifdef SMILEI_ACCELERATOR_GPU_OACC
                 //int ptsize = vecPatches.B2_localz[ipatch]->size();
                 //int size2 = size[2];
-                #pragma acc parallel if(is_memory_on_device) present(pt1,pt2)  //(pt1[0-size2:ptsize],pt2[0:ptsize])
+                #pragma acc parallel if(is_memory_on_device) present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])  //(pt1[0-size2:ptsize],pt2[0:ptsize])
                 #pragma acc loop gang worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                 //const int ptsize = ( nx_ * ny_ * nz_ ) - ( ny_ * nz_ ) + ( ny_ * nz_ ) - nz_ + oversize[2];
@@ -1165,8 +1174,8 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
                     for( unsigned int jn = 0 ; jn < ny_ ; jn ++ ) {
                         unsigned int j = jn *nz_;
                         for( unsigned int k = 0 ; k < oversize[2] ; k++ ) {
-                            pt2[i+j+k] = pt1[i+j+k] ;
-                            pt1[i+j+k+gsp[2]] = pt2[i+j+k+gsp[2]] ;
+                            pt2[i+j+k] = pt1[start_pt1 + i+j+k] ;
+                            pt1[start_pt1 + i+j+k+gsp[2]] = pt2[i+j+k+gsp[2]] ;
                         }
                     }
                 }
@@ -1218,12 +1227,15 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[1][0] ) {
                 field1 = static_cast<F *>( fields[vecPatches( ipatch )->neighbor_[1][0]-h0]  );
                 field2 = static_cast<F *>( fields[ipatch] );
-                pt1 = &( *field1 )( size[1]*nz_ );
+                //pt1 = &( *field1 )( size[1]*nz_ );
+                pt1 = &( *field1 )( 0 );
                 pt2 = &( *field2 )( 0 );
+
+                const unsigned int start_pt1 = size[1]*nz_;
 #ifdef SMILEI_ACCELERATOR_GPU_OACC
                 //int ptsize = vecPatches.B1_localy[ipatch]->size();
                 //int size1 = size[1];
-                #pragma acc parallel if(is_memory_on_device) present(pt1,pt2)  //(pt1[0-size1*nz_:ptsize],pt2[0:ptsize])//-size1*nz_
+                #pragma acc parallel if(is_memory_on_device) present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])  //(pt1[0-size1*nz_:ptsize],pt2[0:ptsize])//-size1*nz_
                 #pragma acc loop gang worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                 //const int ptsize = ( nx_ * ny_ * nz_ ) - ( ny_ * nz_ ) + oversize[1] * nz_ + gsp[1] * nz_;
@@ -1235,8 +1247,8 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
                     unsigned int i = in * ny_*nz_;
                     for( unsigned int j = 0 ; j < oversize[1]*nz_ ; j++ ) {
                         // Rewrite with memcpy ?
-                        pt2[i+j] = pt1[i+j] ;
-                        pt1[i+j+gsp[1]*nz_] = pt2[i+j+gsp[1]*nz_] ;
+                        pt2[i+j] = pt1[start_pt1+ i+j] ;
+                        pt1[start_pt1 + i+j+gsp[1]*nz_] = pt2[i+j+gsp[1]*nz_] ;
                     }
                 }
             } // End if ( MPI_me_ == MPI_neighbor_[1][0] )
@@ -1487,12 +1499,15 @@ void SyncVectorPatch::exchangeAllComponentsAlongY( std::vector<Field *> &fields,
 
             int ipatch = vecPatches.LocalyIdx[ ifield-icomp*nFieldLocaly ];
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[1][0] ) {
-                pt1 = &( fields[vecPatches( ipatch )->neighbor_[1][0]-h0+icomp*nPatches]->data_[size*nz_] );
+                //pt1 = &( fields[vecPatches( ipatch )->neighbor_[1][0]-h0+icomp*nPatches]->data_[size*nz_] );
+                pt1 = &( fields[vecPatches( ipatch )->neighbor_[1][0]-h0+icomp*nPatches]->data_[0] );
                 pt2 = &( vecPatches.B1_localy[ifield]->data_[0] );
+
+                const unsigned int start_pt1 = size*nz_;
 #ifdef SMILEI_ACCELERATOR_GPU_OACC
-                int ptsize = vecPatches.B1_localy[ifield]->size();
+                //int ptsize = vecPatches.B1_localy[ifield]->size();
                 //int sizetnz = size*nz_;
-                #pragma acc parallel present(pt1,pt2)  //(pt1[0-size*nz_:ptsize],pt2[0:ptsize])
+                #pragma acc parallel present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])  //(pt1[0-size*nz_:ptsize],pt2[0:ptsize])
                 #pragma acc loop gang worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                 #pragma omp target
@@ -1501,8 +1516,8 @@ void SyncVectorPatch::exchangeAllComponentsAlongY( std::vector<Field *> &fields,
                 for( unsigned int i = 0 ; i < nx_*ny_*nz_ ; i += ny_*nz_ ) {
                     // for filter
                     for( unsigned int j = 0 ; j < oversize*nz_ ; j++ ) {
-                        pt2[i+j] = pt1[i+j] ;
-                        pt1[i+j+gsp*nz_] = pt2[i+j+gsp*nz_] ;
+                        pt2[i+j] = pt1[start_pt1 + i+j] ;
+                        pt1[start_pt1 + i+j+gsp*nz_] = pt2[i+j+gsp*nz_] ;
                     } // mempy to do
                 }
             } // End if ( MPI_me_ == MPI_neighbor_[1][0] )
@@ -1597,11 +1612,14 @@ void SyncVectorPatch::exchangeAllComponentsAlongZ( std::vector<Field *> fields, 
 
             int ipatch = vecPatches.LocalzIdx[ ifield-icomp*nFieldLocalz ];
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[2][0] ) {
-                pt1 = &( fields[vecPatches( ipatch )->neighbor_[2][0]-h0+icomp*nPatches]->data_[size] );
+                //pt1 = &( fields[vecPatches( ipatch )->neighbor_[2][0]-h0+icomp*nPatches]->data_[size] );
+                pt1 = &( fields[vecPatches( ipatch )->neighbor_[2][0]-h0+icomp*nPatches]->data_[0] );
                 pt2 = &( vecPatches.B2_localz[ifield]->data_[0] );
+
+                const unsigned int start_pt1 = size;
 #ifdef SMILEI_ACCELERATOR_GPU_OACC
-                int ptsize = vecPatches.B2_localz[ifield]->size();
-                #pragma acc parallel present(pt1,pt2)  //(pt1[0-size:ptsize],pt2[0:ptsize])
+                //int ptsize = vecPatches.B2_localz[ifield]->size();
+                #pragma acc parallel present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])  //(pt1[0-size:ptsize],pt2[0:ptsize])
                 #pragma acc loop gang worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                 #pragma omp target
@@ -1610,8 +1628,8 @@ void SyncVectorPatch::exchangeAllComponentsAlongZ( std::vector<Field *> fields, 
                 for( unsigned int i = 0 ; i < nx_*ny_*nz_ ; i += ny_*nz_ ) {
                     for( unsigned int j = 0 ; j < ny_*nz_ ; j += nz_ ) {
                         for( unsigned int k = 0 ; k < oversize ; k++ ) {
-                            pt2[i+j+k] = pt1[i+j+k] ;
-                            pt1[i+j+k+gsp] = pt2[i+j+k+gsp] ;
+                            pt2[i+j+k] = pt1[start_pt1 + i+j+k] ;
+                            pt1[start_pt1 + i+j+k+gsp] = pt2[i+j+k+gsp] ;
                         }
                     }
                 }
