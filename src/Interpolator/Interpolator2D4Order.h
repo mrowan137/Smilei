@@ -42,6 +42,34 @@ public:
         return interp_res;
     };
 
+    SMILEI_ACCELERATOR_DECLARE_ROUTINE
+    //! Computation of a field from provided coefficients
+    /// Aka grid to particle field interpolation
+    ///
+    static inline double __attribute__( ( always_inline ) )
+    compute( const double *__restrict__ coeffx,
+             const double *__restrict__ coeffy,
+             const double *__restrict__ a_field,
+             int x_grid_coordinate,
+             int y_grid_coordinate,
+             int y_grid_extent )
+    {
+        double interp_res = 0.0;
+
+        // unroll ?
+        for( int iloc = -2; iloc < 3; iloc++ ) {
+            for( int jloc = -2; jloc < 3; jloc++ ) {
+                interp_res += coeffx[iloc] *
+                              coeffy[jloc] *
+                              // Smilei uses an indexing favouring linear access in z
+                              // ( *f )( x_grid_coordinate + iloc, y_grid_coordinate + jloc );
+                              a_field[( x_grid_coordinate + iloc ) * y_grid_extent + ( y_grid_coordinate + jloc )];
+            }
+        }
+        return interp_res;
+    }
+    SMILEI_ACCELERATOR_DECLARE_ROUTINE_END
+
     //! Interpolator specific to the envelope model
     void fieldsAndEnvelope( ElectroMagn *EMfields, Particles &particles, SmileiMPI *smpi, int *istart, int *iend, int ithread, int ipart_ref = 0 ) override ;
 

@@ -149,28 +149,95 @@ void Interpolator2D4Order::oneField( Field **field, Particles &particles, int *i
     }
 }
 
-void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields, Particles &particles, SmileiMPI *smpi, int *istart, int *iend, int ithread, unsigned int, int )
+void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields,
+                                          Particles &particles,
+                                          SmileiMPI *smpi,
+                                          int *istart,
+                                          int *iend,
+                                          int ithread,
+                                          unsigned int,
+                                          int )
 {
-    double *Epart = &( smpi->dynamics_Epart[ithread][0] );
-    double *Bpart = &( smpi->dynamics_Bpart[ithread][0] );
-    int *iold = &( smpi->dynamics_iold[ithread][0] );
-    double *delta = &( smpi->dynamics_deltaold[ithread][0] );
+    //double *Epart = &( smpi->dynamics_Epart[ithread][0] );
+    //double *Bpart = &( smpi->dynamics_Bpart[ithread][0] );
+    double *const __restrict__ ELoc  = smpi->dynamics_Epart[ithread].data();
+    double *const __restrict__ BLoc  = smpi->dynamics_Bpart[ithread].data();
+
+    //int *iold = &( smpi->dynamics_iold[ithread][0] );
+    //double *delta = &( smpi->dynamics_deltaold[ithread][0] );
+    int    *const __restrict__ iold  = smpi->dynamics_iold[ithread].data();
+    double *const __restrict__ delta = smpi->dynamics_deltaold[ithread].data();
+
+    const double *const __restrict__ position_x = particles.getPtrPosition( 0 );
+    const double *const __restrict__ position_y = particles.getPtrPosition( 1 );
 
     // Static cast of the electromagnetic fields
-    Field2D *Ex2D = static_cast<Field2D *>( EMfields->Ex_ );
-    Field2D *Ey2D = static_cast<Field2D *>( EMfields->Ey_ );
-    Field2D *Ez2D = static_cast<Field2D *>( EMfields->Ez_ );
-    Field2D *Bx2D = static_cast<Field2D *>( EMfields->Bx_m );
-    Field2D *By2D = static_cast<Field2D *>( EMfields->By_m );
-    Field2D *Bz2D = static_cast<Field2D *>( EMfields->Bz_m );
+    //Field2D *Ex2D = static_cast<Field2D *>( EMfields->Ex_ );
+    //Field2D *Ey2D = static_cast<Field2D *>( EMfields->Ey_ );
+    //Field2D *Ez2D = static_cast<Field2D *>( EMfields->Ez_ );
+    //Field2D *Bx2D = static_cast<Field2D *>( EMfields->Bx_m );
+    //Field2D *By2D = static_cast<Field2D *>( EMfields->By_m );
+    //Field2D *Bz2D = static_cast<Field2D *>( EMfields->Bz_m );
+    const double *const __restrict__ Ex2D = static_cast<Field2D *>( EMfields->Ex_ )->data();
+    const double *const __restrict__ Ey2D = static_cast<Field2D *>( EMfields->Ey_ )->data();
+    const double *const __restrict__ Ez2D = static_cast<Field2D *>( EMfields->Ez_ )->data();
+    const double *const __restrict__ Bx2D = static_cast<Field2D *>( EMfields->Bx_m )->data();
+    const double *const __restrict__ By2D = static_cast<Field2D *>( EMfields->By_m )->data();
+    const double *const __restrict__ Bz2D = static_cast<Field2D *>( EMfields->Bz_m )->data();
+
+#if defined(SMILEI_ACCELERATOR_GPU_OACC)    
+    const int sizeofEx = EMfields->Ex_->size();
+    const int sizeofEy = EMfields->Ey_->size();
+    const int sizeofEz = EMfields->Ez_->size();
+    const int sizeofBx = EMfields->Bx_m->size();
+    const int sizeofBy = EMfields->By_m->size();
+    const int sizeofBz = EMfields->Bz_m->size();
+#endif
+
+    // Definition of grid size ny_p and ny_d as in 2nd order ???
+    const int ny_p = EMfields->By_m->dims_[1]; // primary_grid_size_in_y
 
     //Loop on bin particles
-    int nparts( particles.numberOfParticles() );
-    for( int ipart=*istart ; ipart<*iend; ipart++ ) {
+    const int nparts = particles.numberOfParticles();
+
+    // La definition de ces deux variables intermediaires est elle bien necessaire ?
+    const int first_index = *istart;
+    const int last_index  = *iend;
+
+#if defined( SMILEI_ACCELERATOR_GPU_OMP )
+
+    #pragma omp target map( to                                                     \
+                            : i_domain_begin, j_domain_begin )                     \
+        is_device_ptr /* map */ ( /* to: */                                        \
+                                  position_x /* [first_index:npart_range_size] */, \
+                                  position_y /* [first_index:npart_range_size] */ )
+    #pragma omp teams distribute parallel for
+#elif defined(SMILEI_ACCELERATOR_GPU_OACC)
+    #pragma acc enter data create(this)
+    #pragma acc update device(this)
+    size_t interpolation_range_size = ( last_index + 1 * nparts ) - first_index;
+    #pragma acc parallel present(ELoc [first_index:interpolation_range_size],\
+                                 BLoc [first_index:interpolation_range_size],\
+                                 iold [first_index:interpolation_range_size],\
+                                 delta [first_index:interpolation_range_size],\
+                                 Ex2D [0:sizeofEx],\
+                                 Ey2D [0:sizeofEy],\
+                                 Ez2D [0:sizeofEz],\
+                                 Bx2D [0:sizeofBx],\
+                                 By2D [0:sizeofBy],\
+                                 Bz2D [0:sizeofBz])\
+    deviceptr(position_x, position_y)              \
+    copyin(d_inv_[0:2])
+    #pragma acc loop gang worker vector
+#endif
+    for( int ipart = first_index; ipart < last_index; ipart++ ) {
+    //for( int ipart=*istart ; ipart<*iend; ipart++ ) {
 
         // Normalized particle position
-        double xpn = particles.position( 0, ipart )*d_inv_[0];
-        double ypn = particles.position( 1, ipart )*d_inv_[1];
+            //double xpn = particles.position( 0, ipart )*d_inv_[0];
+            //double ypn = particles.position( 1, ipart )*d_inv_[1];
+        const double xpn = position_x[ipart] * d_inv_[0];
+        const double ypn = position_y[ipart] * d_inv_[1];
 
         // Coeffs
         int idx_p[2], idx_d[2];
@@ -180,25 +247,33 @@ void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields, Particles &part
         coeffs( xpn, ypn, idx_p, idx_d, coeffxp, coeffyp, coeffxd, coeffyd, delta_p );
 
         // Interpolation of Ex^(d,p)
-        *( Epart+0*nparts+ipart ) = compute( &coeffxd[2], &coeffyp[2], Ex2D, idx_d[0], idx_p[1] );
+        ELoc[0*nparts+ipart] = compute( &coeffxd[1], &coeffyp[1], Ex2D, idx_d[0], idx_p[1], ny_p );
         // Interpolation of Ey^(p,d)
-        *( Epart+1*nparts+ipart ) = compute( &coeffxp[2], &coeffyd[2], Ey2D, idx_p[0], idx_d[1] );
+        ELoc[1*nparts+ipart] = compute( &coeffxp[1], &coeffyd[1], Ey2D, idx_p[0], idx_d[1], ny_p+1 );
         // Interpolation of Ez^(p,p)
-        *( Epart+2*nparts+ipart ) = compute( &coeffxp[2], &coeffyp[2], Ez2D, idx_p[0], idx_p[1] );
+        ELoc[2*nparts+ipart] = compute( &coeffxp[1], &coeffyp[1], Ez2D, idx_p[0], idx_p[1], ny_p );
         // Interpolation of Bx^(p,d)
-        *( Bpart+0*nparts+ipart ) = compute( &coeffxp[2], &coeffyd[2], Bx2D, idx_p[0], idx_d[1] );
+        BLoc[0*nparts+ipart] = compute( &coeffxp[1], &coeffyd[1], Bx2D, idx_p[0], idx_d[1], ny_p+1 );
         // Interpolation of By^(d,p)
-        *( Bpart+1*nparts+ipart ) = compute( &coeffxd[2], &coeffyp[2], By2D, idx_d[0], idx_p[1] );
+        BLoc[1*nparts+ipart] = compute( &coeffxd[1], &coeffyp[1], By2D, idx_d[0], idx_p[1], ny_p );
         // Interpolation of Bz^(d,d)
-        *( Bpart+2*nparts+ipart ) = compute( &coeffxd[2], &coeffyd[2], Bz2D, idx_d[0], idx_d[1] );
+        BLoc[2*nparts+ipart] = compute( &coeffxd[1], &coeffyd[1], Bz2D, idx_d[0], idx_d[1], ny_p+1 );
 
         //Buffering of iol and delta
-        *( iold+0*nparts+ipart )  = idx_p[0];
-        *( iold+1*nparts+ipart )  = idx_p[1];
-        *( delta+0*nparts+ipart ) = delta_p[0];
-        *( delta+1*nparts+ipart ) = delta_p[1];
+        //*( iold+0*nparts+ipart )  = idx_p[0];
+        //*( iold+1*nparts+ipart )  = idx_p[1];
+        //*( delta+0*nparts+ipart ) = delta_p[0];
+        //*( delta+1*nparts+ipart ) = delta_p[1];
+        iold[0*nparts+ipart]  = idx_p[0];
+        iold[1*nparts+ipart]  = idx_p[1];
+        delta[0*nparts+ipart] = delta_p[0];
+        delta[1*nparts+ipart] = delta_p[1];
 
     }
+    // A quoi ça sert ??
+    #if defined(SMILEI_ACCELERATOR_GPU_OACC)
+        #pragma acc exit data delete(this)
+    #endif
 
 
 }
