@@ -1,4 +1,3 @@
-
 // TODO(Etienne M): The makefile does not recognise this file and doesn't compute
 // it's dependencies. If you make a modification in one of the header this file
 // includes, you must `touch` this file. IF you dont do that you'll have ABI/ODR
@@ -6,6 +5,7 @@
 
 #if defined( SMILEI_ACCELERATOR_GPU )
 
+#include "Projector2D4OrderGPUKernelCUDAHIP.h"
 
 #if defined( __HIP__ ) 
     #include <hip/hip_runtime.h>
@@ -323,7 +323,7 @@ namespace cudahip2d {
                 ComputeFloat tmpJx[7]{};
 
                 for( unsigned int i = 1; i < 7; ++i ) {
-                    const int iloc = ( i + ipo ) * GPUClusterWithGCWidth; + jpo;
+                    const int iloc = ( i + ipo ) * GPUClusterWithGCWidth + jpo;
                     tmpJx[0] -= crx_p * ( Sx1[i - 1] - Sx0[i - 1] ) * ( static_cast<ComputeFloat>( 0.5 ) * ( Sy1[0] - Sy0[0] ) );
                     atomic::LDS::AddNoReturn( &Jx_scratch_space[iloc], static_cast<ReductionFloat>( tmpJx[0] ) );
                     for( unsigned int j = 1; j < 7; ++j ) {
@@ -360,7 +360,7 @@ namespace cudahip2d {
                 // Jy
 
                 for( unsigned int i = 0; i < 1; ++i ) {
-                    const int    iloc = ( i + ipo ) * GPUClusterWithGCWidth; + jpo;
+                    const int    iloc = ( i + ipo ) * GPUClusterWithGCWidth + jpo;
                     ComputeFloat tmp{};
                     for( unsigned int j = 1; j < 7; j++ ) {
                         tmp -= cry_p * ( Sy1[j - 1] - Sy0[j - 1] ) * ( Sx0[i] + static_cast<ComputeFloat>( 0.5 ) * ( Sx1[i] - Sx0[i] ) );
@@ -369,7 +369,7 @@ namespace cudahip2d {
                 }
 
                 for( unsigned int i = 1; i < 7; ++i ) {
-                    const int    iloc = ( i + ipo ) * GPUClusterWithGCWidth; + jpo;
+                    const int    iloc = ( i + ipo ) * GPUClusterWithGCWidth + jpo;
                     ComputeFloat tmp{};
                     for( unsigned int j = 1; j < 7; ++j ) {
                         tmp -= cry_p * ( Sy1[j - 1] - Sy0[j - 1] ) * ( Sx0[i] + static_cast<ComputeFloat>( 0.5 ) * ( Sx1[i] - Sx0[i] ) );
@@ -405,7 +405,7 @@ namespace cudahip2d {
                 // Jz
 
                 for( unsigned int i = 0; i < 1; ++i ) {
-                    const int iloc = ( i + ipo ) * GPUClusterWithGCWidth; + jpo;
+                    const int iloc = ( i + ipo ) * GPUClusterWithGCWidth + jpo;
                     atomic::LDS::AddNoReturn( &Jz_scratch_space[iloc], static_cast<ReductionFloat>( crz_p * ( Sy1[0] * (  Sx1[i] ) ) ) );
                     for( unsigned int j = 1; j < 7; j++ ) {
                         atomic::LDS::AddNoReturn( &Jz_scratch_space[iloc + j], static_cast<ReductionFloat>( crz_p * ( Sy0[j] * ( static_cast<ComputeFloat>( 0.5 ) * Sx1[i]  ) +
@@ -414,7 +414,7 @@ namespace cudahip2d {
                 }
 
                 for( unsigned int i = 1; i < 7; ++i ) {
-                    const int iloc = ( i + ipo ) * GPUClusterWithGCWidth; + jpo;
+                    const int iloc = ( i + ipo ) * GPUClusterWithGCWidth + jpo;
                     atomic::LDS::AddNoReturn( &Jz_scratch_space[iloc], static_cast<ReductionFloat>( crz_p * ( Sy1[0] * ( static_cast<ComputeFloat>( 0.5 ) * Sx0[i] + Sx1[i] ) ) ) );
                     for( unsigned int j = 1; j < 7; ++j ) {
                         atomic::LDS::AddNoReturn( &Jz_scratch_space[iloc + j], static_cast<ReductionFloat>( crz_p * ( Sy0[j] * ( static_cast<ComputeFloat>( 0.5 ) * Sx1[i] + Sx0[i] ) +
@@ -471,7 +471,7 @@ namespace cudahip2d {
                   std::size_t kWorkgroupSize>
         __global__ void
         // __launch_bounds__(kWorkgroupSize, 1)
-        DepositCurrentAndDensity_2D_Order2( double *__restrict__ device_Jx,
+        DepositCurrentAndDensity_2D_Order4( double *__restrict__ device_Jx,
                                             double *__restrict__ device_Jy,
                                             double *__restrict__ device_Jz,
                                             double *__restrict__ device_rho,
@@ -814,7 +814,7 @@ namespace cudahip2d {
         using ComputeFloat   = double;
         using ReductionFloat = double;
 
-        auto KernelFunction = kernel::DepositCurrentDensity_2D_Order2<ComputeFloat, ReductionFloat, kWorkgroupSize>;
+        auto KernelFunction = kernel::DepositCurrentDensity_2D_Order4<ComputeFloat, ReductionFloat, kWorkgroupSize>;
 #if defined ( __HIP__ ) 
         hipLaunchKernelGGL( KernelFunction,
                             kGridDimension,
@@ -928,7 +928,7 @@ namespace cudahip2d {
         //
         using ComputeFloat   = double;
         using ReductionFloat = double;
-        auto KernelFunction = kernel::DepositCurrentAndDensity_2D_Order2<ComputeFloat, ReductionFloat, kWorkgroupSize>;
+        auto KernelFunction = kernel::DepositCurrentAndDensity_2D_Order4<ComputeFloat, ReductionFloat, kWorkgroupSize>;
 #if defined ( __HIP__ ) 
         hipLaunchKernelGGL( KernelFunction,
                             kGridDimension,

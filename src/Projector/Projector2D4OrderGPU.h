@@ -62,7 +62,7 @@ protected:
     int    not_spectral_;
     bool cell_sorting_;
     unsigned int x_dimension_bin_count_;
-
+    unsigned int y_dimension_bin_count_;
     static constexpr double dble_1_ov_384   = 1.0/384.0;
     static constexpr double dble_1_ov_48    = 1.0/48.0;
     static constexpr double dble_1_ov_16    = 1.0/16.0;
@@ -74,7 +74,7 @@ protected:
     static constexpr double dble_1_ov_6     = 1.0/6.0;
     static constexpr double dble_115_ov_192 = 115.0/192.0;
     static constexpr double dble_5_ov_8     = 5.0/8.0;
-unsigned int y_dimension_bin_count_;
+
 };
 
 #endif
