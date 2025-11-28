@@ -19,7 +19,7 @@
 
 namespace cudahip2d {
 //static
-void currentDepositionKernel2D( double *__restrict__ host_Jx,
+void currentDepositionKernel2D4Order( double *__restrict__ host_Jx,
                                double *__restrict__ host_Jy,
                                double *__restrict__ host_Jz,
                                int Jx_size,
@@ -48,7 +48,7 @@ void currentDepositionKernel2D( double *__restrict__ host_Jx,
                                bool cell_sorting );
 
 //static 
-void currentAndDensityDepositionKernel2D(
+void currentAndDensityDepositionKernel2D4Order(
                                 double *__restrict__ host_Jx,
                                 double *__restrict__ host_Jy,
                                 double *__restrict__ host_Jz,

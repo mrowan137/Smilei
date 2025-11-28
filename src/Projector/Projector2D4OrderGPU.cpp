@@ -43,7 +43,7 @@ Projector2D4OrderGPU::~Projector2D4OrderGPU()
 #if defined( SMILEI_ACCELERATOR_GPU )    //SMILEI_ACCELERATOR_GPU_OMP )
 
 extern "C" void
-currentDepositionKernel2DOnDevice( double *__restrict__ Jx,
+currentDepositionKernel2D4OrderOnDevice( double *__restrict__ Jx,
                          double *__restrict__ Jy,
                          double *__restrict__ Jz,
                          int Jx_size,
@@ -72,7 +72,7 @@ currentDepositionKernel2DOnDevice( double *__restrict__ Jx,
                          bool   cell_sorting );
 
 extern "C" void
-currentAndDensityDepositionKernel2DOnDevice( double *__restrict__ Jx,
+currentAndDensityDepositionKernel2D4OrderOnDevice( double *__restrict__ Jx,
                                    double *__restrict__ Jy,
                                    double *__restrict__ Jz,
                                    double *__restrict__ rho,
@@ -135,7 +135,7 @@ namespace { // Unnamed namespace == static == internal linkage == no exported sy
               int not_spectral,
               bool cell_sorting )
     {
-        currentDepositionKernel2DOnDevice( Jx,
+        currentDepositionKernel2D4OrderOnDevice( Jx,
                                  Jy,
                                  Jz,
                                  Jx_size,
@@ -204,7 +204,7 @@ namespace { // Unnamed namespace == static == internal linkage == no exported sy
                         int not_spectral,
                         bool cell_sorting )
     {
-        currentAndDensityDepositionKernel2DOnDevice( Jx,
+        currentAndDensityDepositionKernel2D4OrderOnDevice( Jx,
                                            Jy,
                                            Jz,
                                            rho,

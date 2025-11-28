@@ -766,7 +766,7 @@ namespace cudahip2d {
 
     //static inline
     void
-    currentDepositionKernel2D( double *__restrict__ host_Jx,
+    currentDepositionKernel2D4Order( double *__restrict__ host_Jx,
                              double *__restrict__ host_Jy,
                              double *__restrict__ host_Jz,
                              int Jx_size,
@@ -879,7 +879,7 @@ namespace cudahip2d {
 
     //static inline 
     void
-    currentAndDensityDepositionKernel2D( double *__restrict__ host_Jx,
+    currentAndDensityDepositionKernel2D4Order( double *__restrict__ host_Jx,
                                        double *__restrict__ host_Jy,
                                        double *__restrict__ host_Jz,
                                        double *__restrict__ host_rho,

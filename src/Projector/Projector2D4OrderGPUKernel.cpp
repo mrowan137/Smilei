@@ -8,7 +8,7 @@
 //! Project global current densities (EMfields->Jx_/Jy_/Jz_)
 //!
 extern "C" void
-currentDepositionKernel2DOnDevice( double *__restrict__ host_Jx,
+currentDepositionKernel2D4OrderOnDevice( double *__restrict__ host_Jx,
                          double *__restrict__ host_Jy,
                          double *__restrict__ host_Jz,
                          int Jx_size,
@@ -41,7 +41,7 @@ currentDepositionKernel2DOnDevice( double *__restrict__ host_Jx,
     //#else
     cudahip2d::
     //#endif
-        currentDepositionKernel2D( host_Jx, host_Jy, host_Jz,
+        currentDepositionKernel2D4Order( host_Jx, host_Jy, host_Jz,
                                  Jx_size, Jy_size, Jz_size,
                                  device_particle_position_x, device_particle_position_y,
                                  device_particle_momentum_z,
@@ -65,7 +65,7 @@ currentDepositionKernel2DOnDevice( double *__restrict__ host_Jx,
 //! Project global current and charge densities (EMfields->Jx_/Jy_/Jz_/rho_)
 //!
 extern "C" void
-currentAndDensityDepositionKernel2DOnDevice( double *__restrict__ host_Jx,
+currentAndDensityDepositionKernel2D4OrderOnDevice( double *__restrict__ host_Jx,
                                    double *__restrict__ host_Jy,
                                    double *__restrict__ host_Jz,
                                    double *__restrict__ host_rho,
@@ -100,7 +100,7 @@ currentAndDensityDepositionKernel2DOnDevice( double *__restrict__ host_Jx,
     //#else
     cudahip2d::
     //#endif
-        currentAndDensityDepositionKernel2D( host_Jx, host_Jy, host_Jz, host_rho,
+        currentAndDensityDepositionKernel2D4Order( host_Jx, host_Jy, host_Jz, host_rho,
                                            Jx_size, Jy_size, Jz_size, rho_size,
                                            device_particle_position_x, device_particle_position_y,
                                            device_particle_momentum_z,
