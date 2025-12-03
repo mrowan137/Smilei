@@ -158,26 +158,15 @@ void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields,
                                           unsigned int,
                                           int )
 {
-    //double *Epart = &( smpi->dynamics_Epart[ithread][0] );
-    //double *Bpart = &( smpi->dynamics_Bpart[ithread][0] );
     double *const __restrict__ ELoc  = smpi->dynamics_Epart[ithread].data();
     double *const __restrict__ BLoc  = smpi->dynamics_Bpart[ithread].data();
 
-    //int *iold = &( smpi->dynamics_iold[ithread][0] );
-    //double *delta = &( smpi->dynamics_deltaold[ithread][0] );
     int    *const __restrict__ iold  = smpi->dynamics_iold[ithread].data();
     double *const __restrict__ delta = smpi->dynamics_deltaold[ithread].data();
 
     const double *const __restrict__ position_x = particles.getPtrPosition( 0 );
     const double *const __restrict__ position_y = particles.getPtrPosition( 1 );
 
-    // Static cast of the electromagnetic fields
-    //Field2D *Ex2D = static_cast<Field2D *>( EMfields->Ex_ );
-    //Field2D *Ey2D = static_cast<Field2D *>( EMfields->Ey_ );
-    //Field2D *Ez2D = static_cast<Field2D *>( EMfields->Ez_ );
-    //Field2D *Bx2D = static_cast<Field2D *>( EMfields->Bx_m );
-    //Field2D *By2D = static_cast<Field2D *>( EMfields->By_m );
-    //Field2D *Bz2D = static_cast<Field2D *>( EMfields->Bz_m );
     const double *const __restrict__ Ex2D = static_cast<Field2D *>( EMfields->Ex_ )->data();
     const double *const __restrict__ Ey2D = static_cast<Field2D *>( EMfields->Ey_ )->data();
     const double *const __restrict__ Ez2D = static_cast<Field2D *>( EMfields->Ez_ )->data();
@@ -231,11 +220,8 @@ void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields,
     #pragma acc loop gang worker vector
 #endif
     for( int ipart = first_index; ipart < last_index; ipart++ ) {
-    //for( int ipart=*istart ; ipart<*iend; ipart++ ) {
 
         // Normalized particle position
-            //double xpn = particles.position( 0, ipart )*d_inv_[0];
-            //double ypn = particles.position( 1, ipart )*d_inv_[1];
         const double xpn = position_x[ipart] * d_inv_[0];
         const double ypn = position_y[ipart] * d_inv_[1];
 
@@ -260,17 +246,12 @@ void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields,
         BLoc[2*nparts+ipart] = compute( &coeffxd[2], &coeffyd[2], Bz2D, idx_d[0], idx_d[1], ny_p+1 );
 
         //Buffering of iol and delta
-        //*( iold+0*nparts+ipart )  = idx_p[0];
-        //*( iold+1*nparts+ipart )  = idx_p[1];
-        //*( delta+0*nparts+ipart ) = delta_p[0];
-        //*( delta+1*nparts+ipart ) = delta_p[1];
         iold[0*nparts+ipart]  = idx_p[0];
         iold[1*nparts+ipart]  = idx_p[1];
         delta[0*nparts+ipart] = delta_p[0];
         delta[1*nparts+ipart] = delta_p[1];
 
     }
-    // A quoi ça sert ??
     #if defined(SMILEI_ACCELERATOR_GPU_OACC)
         #pragma acc exit data delete(this)
     #endif

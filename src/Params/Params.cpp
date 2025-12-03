@@ -1215,7 +1215,6 @@ void Params::compute()
     if( cluster_width_ == -1 ) {
 #if defined( SMILEI_ACCELERATOR_GPU )
         cluster_width_ = patch_size_[0];
-        cout << "In params cluster_width_ = " << cluster_width_ << endl;
         // On GPU, dont do the CPU automatic cluster_width computation, only one
         // bin is expected.
         // NOTE: In OMP GPU offloading and 2D, the true number of cluster is
