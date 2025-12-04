@@ -17,7 +17,7 @@
 
 
 
-namespace cudahip2d {
+namespace cudahip2d4Order {
 //static
 void currentDepositionKernel2D4Order( double *__restrict__ host_Jx,
                                double *__restrict__ host_Jy,
@@ -91,7 +91,7 @@ void currentAndDensityDepositionKernel2D4Order(
     static constexpr double dble_115_ov_192 = 115.0/192.0;
     static constexpr double dble_5_ov_8     = 5.0/8.0;
 
-} // namespace cudahip2d
+} // namespace cudahip2d4Order
 
 #endif
 #endif

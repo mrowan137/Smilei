@@ -35,7 +35,7 @@
     #include "gpu.h"
 #endif
 
-namespace cudahip2d {
+namespace cudahip2d4Order {
     namespace detail {
 #if defined( __HIP__ )
         static inline void

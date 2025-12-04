@@ -39,7 +39,7 @@ currentDepositionKernel2D4OrderOnDevice( double *__restrict__ host_Jx,
     //#if defined( PRIVATE_SMILEI_USE_OPENMP_PROJECTION_IMPLEMENTATION )
     //naive:: // the naive, OMP version serves as a reference along with the CPU version
     //#else
-    cudahip2d::
+    cudahip2d4Order::
     //#endif
         currentDepositionKernel2D4Order( host_Jx, host_Jy, host_Jz,
                                  Jx_size, Jy_size, Jz_size,
@@ -98,7 +98,7 @@ currentAndDensityDepositionKernel2D4OrderOnDevice( double *__restrict__ host_Jx,
     //#if defined( PRIVATE_SMILEI_USE_OPENMP_PROJECTION_IMPLEMENTATION )
     //naive:: // the naive, OMP version serves as a reference along with the CPU version
     //#else
-    cudahip2d::
+    cudahip2d4Order::
     //#endif
         currentAndDensityDepositionKernel2D4Order( host_Jx, host_Jy, host_Jz, host_rho,
                                            Jx_size, Jy_size, Jz_size, rho_size,
