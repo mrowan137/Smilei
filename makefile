@@ -232,6 +232,8 @@ ifeq (,$(call parse_config,noopenmp))
 		OPENMP_FLAG ?= -Kopenmp -Kopenmp_simd
 	else ifeq ($(findstring FCCpx, $(COMPILER_INFO)), FCCpx)
 		OPENMP_FLAG ?= -Kopenmp -Kopenmp_simd
+	else ifeq ($(findstring icpx, $(COMPILER_INFO)), icpx)
+		OPENMP_FLAG ?= -qopenmp
 	else
 		OPENMP_FLAG ?= -fopenmp
 	endif
