@@ -53,3 +53,5 @@ if (test_passed):
 # clean up
 subprocess.run("rm -rf /gpfs/workdir/prouveurc/runs/ci_runs/*", shell = True, executable="/bin/bash")
 
+if (not test_passed):
+    sys.exit(1)
