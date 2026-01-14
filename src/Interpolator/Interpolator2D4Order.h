@@ -1,10 +1,9 @@
 #ifndef INTERPOLATOR2D4ORDER_H
 #define INTERPOLATOR2D4ORDER_H
 
-
-#include "Interpolator2D.h"
 #include "Field2D.h"
-
+#include "Interpolator2D.h"
+#include "gpu.h"
 
 //  --------------------------------------------------------------------------------------------------------------------
 //! Class for 4th order interpolator for 2Dcartesian simulations
@@ -80,9 +79,23 @@ public:
     void envelopeAndSusceptibility( ElectroMagn *EMfields, Particles &particles, int ipart, double *Env_A_abs_Loc, double *Env_Chi_Loc, double *Env_E_abs_Loc, double *Env_Ex_abs_Loc ) override ;
 
 private:
-    inline void __attribute__((always_inline)) coeffs( double xpn, double ypn, int* idx_p, int* idx_d,
+    double dble_1_ov_384 ;
+    double dble_1_ov_48 ;
+    double dble_1_ov_16 ;
+    double dble_1_ov_12 ;
+    double dble_1_ov_24 ;
+    double dble_19_ov_96 ;
+    double dble_11_ov_24 ;
+    double dble_1_ov_4 ;
+    double dble_1_ov_6 ;
+    double dble_115_ov_192 ;
+    double dble_5_ov_8 ;
+
+    SMILEI_ACCELERATOR_DECLARE_ROUTINE
+    inline void __attribute__((always_inline)) 
+    coeffs( double xpn, double ypn, int* idx_p, int* idx_d,
                         double *coeffxp, double *coeffyp,
-                        double *coeffxd, double *coeffyd, double* delta_p )
+                        double *coeffxd, double *coeffyd, double* delta_p ) const
     {
         // Indexes of the central nodes
         idx_p[0] = round( xpn );
@@ -140,18 +153,8 @@ private:
         idx_d[1]   = idx_d[1] - j_domain_begin;
 
     }
+    SMILEI_ACCELERATOR_DECLARE_ROUTINE_END
 
-    double dble_1_ov_384 ;
-    double dble_1_ov_48 ;
-    double dble_1_ov_16 ;
-    double dble_1_ov_12 ;
-    double dble_1_ov_24 ;
-    double dble_19_ov_96 ;
-    double dble_11_ov_24 ;
-    double dble_1_ov_4 ;
-    double dble_1_ov_6 ;
-    double dble_115_ov_192 ;
-    double dble_5_ov_8 ;
 
 };//END class
 
