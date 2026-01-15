@@ -78,6 +78,7 @@ public:
     //! Interpolator specific to the envelope model
     void envelopeAndSusceptibility( ElectroMagn *EMfields, Particles &particles, int ipart, double *Env_A_abs_Loc, double *Env_Chi_Loc, double *Env_E_abs_Loc, double *Env_Ex_abs_Loc ) override ;
 
+protected:
 
     double dble_1_ov_384   ;
     double dble_1_ov_48    ;
@@ -90,8 +91,6 @@ public:
     double dble_1_ov_6     ;
     double dble_115_ov_192 ;
     double dble_5_ov_8     ;
-
-protected:
 
 private:
 
