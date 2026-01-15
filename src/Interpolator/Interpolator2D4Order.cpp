@@ -195,8 +195,20 @@ void Interpolator2D4Order::fieldsWrapper( ElectroMagn *EMfields,
 
 #if defined( SMILEI_ACCELERATOR_GPU_OMP )
 
-    #pragma omp target map( to                                                     \
-                            : i_domain_begin, j_domain_begin )                     \
+    #pragma omp target map( to :                                                   \
+                              i_domain_begin, j_domain_begin,                      \
+                              dble_1_ov_384  ,\
+                              dble_1_ov_48   ,\
+                              dble_1_ov_16   ,\
+                              dble_1_ov_12   ,\
+                              dble_1_ov_24   ,\
+                              dble_19_ov_96  ,\
+                              dble_11_ov_24  ,\
+                              dble_1_ov_4    ,\
+                              dble_1_ov_6    ,\
+                              dble_115_ov_192,\
+                              dble_5_ov_8     \
+                          )                     \
         is_device_ptr /* map */ ( /* to: */                                        \
                                   position_x /* [first_index:npart_range_size] */, \
                                   position_y /* [first_index:npart_range_size] */ )

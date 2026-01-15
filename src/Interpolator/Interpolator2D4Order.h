@@ -13,7 +13,7 @@ class Interpolator2D4Order : public Interpolator2D
 
 public:
 
-    //! Creator for Interpolator2D2Order
+    //! Creator for Interpolator2D4Order
     Interpolator2D4Order( Params &, Patch * );
     ~Interpolator2D4Order() override {};
     
@@ -78,18 +78,21 @@ public:
     //! Interpolator specific to the envelope model
     void envelopeAndSusceptibility( ElectroMagn *EMfields, Particles &particles, int ipart, double *Env_A_abs_Loc, double *Env_Chi_Loc, double *Env_E_abs_Loc, double *Env_Ex_abs_Loc ) override ;
 
-private:
-    double dble_1_ov_384 ;
-    double dble_1_ov_48 ;
-    double dble_1_ov_16 ;
-    double dble_1_ov_12 ;
-    double dble_1_ov_24 ;
-    double dble_19_ov_96 ;
-    double dble_11_ov_24 ;
-    double dble_1_ov_4 ;
-    double dble_1_ov_6 ;
+protected:
+
+    double dble_1_ov_384   ;
+    double dble_1_ov_48    ;
+    double dble_1_ov_16    ;
+    double dble_1_ov_12    ;
+    double dble_1_ov_24    ;
+    double dble_19_ov_96   ;
+    double dble_11_ov_24   ;
+    double dble_1_ov_4     ;
+    double dble_1_ov_6     ;
     double dble_115_ov_192 ;
-    double dble_5_ov_8 ;
+    double dble_5_ov_8     ;
+
+private:
 
     SMILEI_ACCELERATOR_DECLARE_ROUTINE
     inline void __attribute__((always_inline)) 
@@ -102,7 +105,7 @@ private:
         idx_d[0] = round( xpn+0.5 );
         idx_p[1] = round( ypn );
         idx_d[1] = round( ypn+0.5 );
-        
+
         // Declaration and calculation of the coefficient for interpolation
         double delta_x, delta_y, delta2, delta3, delta4;
         
