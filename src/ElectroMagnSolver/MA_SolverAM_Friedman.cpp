@@ -155,20 +155,15 @@ void MA_SolverAM_Friedman::operator()( ElectroMagn *fields )
                     ( *El_m2 )( i, oversize_r-1 )=-( *El_m2 )( i, oversize_r+1 );
                 }
                 for( unsigned int i=0 ; i<nl_p  ; i++ ) {
-                    //( *Et )( i, oversize_r )= -1./3.*( 4.*Icpx*( *Er )( i, oversize_r+1 )+( *Et )( i, oversize_r+1 ) );
-                    //( *Et    )( i, oversize_r   )= -Icpx/8.*( 9.*( *Er )( i, oversize_r+1 )-( *Er )( i, oversize_r+2 ) );
                     ( *Et )( i, oversize_r )= -( 4.*Icpx*( *Er )( i, oversize_r+1 ) + ( *Et )( i, oversize_r+1 ) )/3.;// div( E mode 1) = 0 on axis.
                     ( *Et    )( i, oversize_r-1 )=( *Et )( i, oversize_r+1 );
 
-                    //( *Et_f  )( i, oversize_r   )= -Icpx/8.*( 9.*( *Er_f )( i, oversize_r+1 )-( *Er_f )( i, oversize_r+2 ) );
                     ( *Et_f )( i, oversize_r )= -( 4.*Icpx*( *Er_f )( i, oversize_r+1 ) + ( *Et_f )( i, oversize_r+1 ) )/3.;// div( E mode 1) = 0 on axis.
                     ( *Et_f  )( i, oversize_r-1 )=( *Et_f )( i, oversize_r+1 );
 
-                    //( *Et_m1 )( i, oversize_r   )= -Icpx/8.*( 9.*( *Er_m1 )( i, oversize_r+1 )-( *Er_m1 )( i, oversize_r+2 ) );
                     ( *Et_m1)( i, oversize_r )= -( 4.*Icpx*( *Er_m1)( i, oversize_r+1 ) + ( *Et_m1)( i, oversize_r+1 ) )/3.;// div( E mode 1) = 0 on axis.
                     ( *Et_m1 )( i, oversize_r-1 )=( *Et_m1 )( i, oversize_r+1 );
 
-                    //( *Et_m2 )( i, oversize_r   )= -Icpx/8.*( 9.*( *Er_m2 )( i, oversize_r+1 )-( *Er_m2 )( i, oversize_r+2 ) );
                     ( *Et_m2)( i, oversize_r )= -( 4.*Icpx*( *Er_m2)( i, oversize_r+1 ) + ( *Et_m2)( i, oversize_r+1 ) )/3.;// div( E mode 1) = 0 on axis.
                     ( *Et_m2 )( i, oversize_r-1 )=( *Et_m2 )( i, oversize_r+1 );
                 }

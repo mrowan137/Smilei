@@ -79,12 +79,11 @@ void MA_SolverAM_norm::operator()( ElectroMagn *fields )
                     ( *El )( i, oversize_r-1 )=-( *El )( i, oversize_r+1 );
                 }
                 for( unsigned int i=0 ; i<nl_p  ; i++ ) {
-                    //( *Et )( i, oversize_r )= -Icpx/8.*( 9.*( *Er )( i, oversize_r+1 )-( *Er )( i, oversize_r+2 ) );// div( E mode 1) = 0 on axis.
                     ( *Et )( i, oversize_r )= -( 4.*Icpx*( *Er )( i, oversize_r+1 ) + ( *Et )( i, oversize_r+1 ) )/3.;// div( E mode 1) = 0 on axis.
                     ( *Et )( i, oversize_r-1 )=( *Et )( i, oversize_r+1 );
                 }
                 for( unsigned int i=0 ; i<nl_p ; i++ ) {
-                    ( *Er )( i, oversize_r ) = 2.*Icpx*( *Et )( i, oversize_r ) - ( *Er )( i, oversize_r+1 );
+                    ( *Er )( i, oversize_r ) = 2.*Icpx*( *Et )( i, oversize_r ) - ( *Er )( i, oversize_r+1 ); // interpolation of Er on axis must be equal to iEt.
                 }
             } else { // mode > 1
                 for( unsigned int  i=0 ; i<nl_d; i++ ) {

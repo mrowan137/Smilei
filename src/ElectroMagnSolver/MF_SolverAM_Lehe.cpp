@@ -143,7 +143,6 @@ void MF_SolverAM_Lehe::operator()( ElectroMagn *fields )
                     ( *Br )( i, 1 )=-( *Br )( i, 3 );
                 }
                 for( unsigned int i=0 ; i<nl_d ; i++ ) {
-                    //( *Bt )( i, oversize_r+1 )= ( *Bt )( i, oversize_r+2 )/9.;
                     ( *Bt )( i, oversize_r )= -( *Bt )( i, oversize_r+1 );
                 }
                 for( unsigned int i=0 ; i<nl_p ; i++ ) {

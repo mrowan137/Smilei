@@ -323,8 +323,8 @@ void ProjectorAM1OrderRuytenV::apply_axisBC(std::complex<double> *rhoj,std::comp
            }
 
            if (imode == 1){
-               Jt [iloc]= -Icpx/8.*( 9.*Jr[ilocr]- Jr[ilocr+1]);// Jt mode 1 = -I Jr mode 1 on axis to keep div(J) = 0.
-               Jr [ilocr-1] = Jr [ilocr]; // Jr mode 1 is non zero on axis.
+               Jt [iloc]= -( 4.*Icpx*Jr[ilocr] + Jt[iloc+1])/3.;// div(J) = 0.
+               Jr [ilocr-1] = 2.*Icpx*Jt[iloc] - Jr[ilocr]; // Interpolation on axis of Jr must be equal to iJt. This is only useful for Probe diagnostics.
            } else{
                Jt [iloc] = 0. ; // only mode 1 is non zero on axis
                Jt [iloc-1] = -Jt [iloc+1]; // only mode 1 is non zero on axis

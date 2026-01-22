@@ -387,10 +387,10 @@ void ProjectorAM2Order::apply_axisBC(std::complex<double> *rhoj,std::complex<dou
            //Apply BC
            if (imode > 0){
                rhoj[i] = 0.;
-               rhoj[i-1]  = - rhoj[i+1]; // Zero Jl mode > 0 on axis.
+               rhoj[i-1]  = - rhoj[i+1]; // Zero mode > 0 on axis.
            } else {
                rhoj[i] = rhoj[i+1]; //This smoothing is just for cosmetics on the picture, rho has no influence on the results.
-               rhoj[i-1]  = rhoj[i+1]; // Non zero Jl mode > 0 on axis.
+               rhoj[i-1]  = rhoj[i+1]; // Non zero mode > 0 on axis.
            }
        }
    }
@@ -424,10 +424,8 @@ void ProjectorAM2Order::apply_axisBC(std::complex<double> *rhoj,std::complex<dou
            }
 
            if (imode == 1){
-               //Jt [iloc]= -Icpx/8.*( 9.*Jr[ilocr]- Jr[ilocr+1]);// Jt mode 1 = -I Jr mode 1 on axis to keep div(J) = 0.
-               Jt [iloc]= -( 4.*Icpx*Jr[ilocr] + Jt[iloc+1])/3.;// Jt mode 1 = -I Jr mode 1 on axis to keep div(J) = 0.
-               //Jr [ilocr-1] = Jr [ilocr]; // Jr mode 1 is non zero on axis.
-               Jr [ilocr-1] = 2.*Icpx*Jt[iloc] - Jr[ilocr]; // Jr mode 1 is non zero on axis.
+               Jt [iloc]= -( 4.*Icpx*Jr[ilocr] + Jt[iloc+1])/3.;// div(J) = 0.
+               Jr [ilocr-1] = 2.*Icpx*Jt[iloc] - Jr[ilocr]; // Interpolation on axis of Jr must be equal to iJt. This is only useful for Probe diagnostics.
            } else{
                Jt [iloc] = 0. ; // only mode 1 is non zero on axis
                Jt [iloc-1] = -Jt [iloc+1]; // only mode 1 is non zero on axis

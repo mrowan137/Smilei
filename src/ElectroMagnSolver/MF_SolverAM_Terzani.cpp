@@ -168,7 +168,6 @@ void MF_SolverAM_Terzani::operator()( ElectroMagn *fields )
                 
                 // ---- Bt
                 for( unsigned int i=0; i<nl_d ; i++ ) {
-                    //( *Bt )( i, oversize_r )= ( *Bt )( i, oversize_r+1 ); // Non zero Bt mode 1 on axis.
                     ( *Bt )( i, oversize_r )= -2.*Icpx*( *Br )( i, oversize_r ) - ( *Bt )( i, oversize_r+1 ); 
                 }
 
