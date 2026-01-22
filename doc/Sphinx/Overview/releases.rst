@@ -60,6 +60,7 @@ Changes made in the repository (not released)
   * Fix bug in ``Screen`` with a cylindrical shape.
   * Fix PrescribedFields with MLMD.
   * Field synchronization between patches is now done after application of boundary conditions and all points are systematically exchanged.
+  * Fixed segmentation fault when using Multiphoton Breit-Wheeler in ``AMcylindrical`` geometry.
 
 * **Experimental**
 

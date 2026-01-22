@@ -81,7 +81,7 @@ DiagScalar(every=5)
 
 
 DiagFields(
-	every = 15,
+	every = 20,
 	fields = ['Ex','Ey','Rho_eon']
 )
 

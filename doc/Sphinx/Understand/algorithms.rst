@@ -84,6 +84,8 @@ where :math:`w_p` is a quasi-particle *weight*, :math:`\mathbf{x}_p` is its posi
 :math:`S` is the shape-function of all quasi-particles,
 and :math:`\delta` is the Dirac distribution.
 
+
+
 In PIC codes, Vlasov's equation :eq:`Vlasov` is integrated along the continuous trajectories
 of these quasi-particles, while Maxwell's equations :eq:`Maxwell` are solved on a
 discrete spatial grid, the spaces between consecutive grid points being referred to as
@@ -104,6 +106,15 @@ where :math:`r_s = q_s/m_s` is the charge-over-mass ratio (for species :math:`s`
 :math:`\mathbf{u}_p = \mathbf{p}_p/m_s` is the reduced momentum and
 :math:`\gamma_p=\sqrt{1+\mathbf{u}_p^2}` is the Lorentz factor.
 
+The following figure depicts this discretization of the distribution function through 
+macro-particles, and of the physical space where the electromagnetic fields are defined.
+Left: the continuous distribution function in the physical and phase space.
+Right: their discretization.
+
+.. figure:: /_static/PIC_distribution_function.png
+   :width: 16cm
+
+
 
 ----
 
@@ -121,7 +132,7 @@ spatial-centering of the discretized curl operators in Maxwell's equations.
 The following figure summarizes at which points of the Yee-grid are defined the
 electromagnetic fields as well as charge and density currents.
 
-.. image:: /_static/figYee.png
+.. figure:: /_static/figYee.png
    :width: 13cm
 
 Similarly, the time-centering
@@ -197,6 +208,7 @@ and in particular Gauss' and Poisson's.
 
 Note that a relativistically drifting plasma needs :doc:`special treatment <relativistic_fields_initialization>`.
 
+
 ----
 
 The PIC loop
@@ -213,7 +225,10 @@ each consisting in
 #. computing the new electromagnetic fields on the grid.
 
 In this section, we describe these four steps which advance the time from
-time-step :math:`(n)` to time-step :math:`(n+1)`.
+time-step :math:`(n)` to time-step :math:`(n+1)`, summarized in the following figure.
+
+.. figure:: /_static/PIC_loop_reduced_file_size.png
+   :width: 13cm
 
 
 Field interpolation
