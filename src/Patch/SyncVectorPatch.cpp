@@ -1080,8 +1080,8 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
     }
 
 #if defined( SMILEI_ACCELERATOR_GPU )
-    const bool is_memory_on_device = vecPatches.B_localx.size() > 0 &&
-                                     smilei::tools::gpu::HostDeviceMemoryManagement::IsHostPointerMappedOnDevice( &( vecPatches.B_localx[0]->data_[0] ) );
+    field2 = static_cast<F *>( fields[0] ); 
+    const bool is_memory_on_device = smilei::tools::gpu::HostDeviceMemoryManagement::GetDevicePointer( &( *field2 )( 0 ) )  != nullptr;
 #else
     const bool is_memory_on_device = false;
 #endif
@@ -1102,7 +1102,7 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
                 }
             }
             if ( !dynamic_cast<cField*>( fields[ipatch] ) )
-                vecPatches( ipatch )->initExchange( fields[ipatch], 2, smpi );
+                vecPatches( ipatch )->initExchange( fields[ipatch], 2, smpi,  is_memory_on_device );
             else
                 vecPatches( ipatch )->initExchangeComplex( fields[ipatch], 2, smpi );
         }
@@ -1115,7 +1115,6 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
 #endif
         for( unsigned int ipatch=0 ; ipatch<fields.size() ; ipatch++ ) {
             vecPatches( ipatch )->finalizeExchange( fields[ipatch], 2 );
-
             for (int iNeighbor=0 ; iNeighbor<2 ; iNeighbor++) {
                 if ( vecPatches( ipatch )->is_a_MPI_neighbor( 2, ( iNeighbor+1 )%2 ) ) {
                     fields[ipatch]->inject_fields_exch( 2, iNeighbor, oversize[2] );
@@ -1130,25 +1129,19 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[2][0] ) {
                 field1 = static_cast<F *>( fields[vecPatches( ipatch )->neighbor_[2][0]-h0]  );
                 field2 = static_cast<F *>( fields[ipatch] );
-                //pt1 = &( *field1 )( size[2] );
                 pt1 = &( *field1 )( 0 );
                 pt2 = &( *field2 )( 0 );
 
                 const unsigned int start_pt1 = size[2];
 #ifdef SMILEI_ACCELERATOR_GPU_OACC
-                //int ptsize = vecPatches.B2_localz[ipatch]->size();
-                //int size2 = size[2];
-                #pragma acc parallel if(is_memory_on_device) present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])  //(pt1[0-size2:ptsize],pt2[0:ptsize])
+                #pragma acc parallel if(is_memory_on_device) present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_]) 
                 #pragma acc loop gang worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
-                //const int ptsize = ( nx_ * ny_ * nz_ ) - ( ny_ * nz_ ) + ( ny_ * nz_ ) - nz_ + oversize[2];
                 #pragma omp target if(is_memory_on_device)
                 #pragma omp teams distribute parallel for collapse( 3 )
 #endif
-                //for (unsigned int in = oversize[0] ; in < nx_-oversize[0]; in ++){
                 for( unsigned int in = 0 ; in < nx_ ; in ++ ) {
                     unsigned int i = in * ny_*nz_;
-                    //for (unsigned int jn = oversize[1] ; jn < ny_-oversize[1] ; jn ++){
                     for( unsigned int jn = 0 ; jn < ny_ ; jn ++ ) {
                         unsigned int j = jn *nz_;
                         for( unsigned int k = 0 ; k < oversize[2] ; k++ ) {
@@ -1178,7 +1171,7 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
                 }
             }
             if ( !dynamic_cast<cField*>( fields[ipatch] ) )
-                vecPatches( ipatch )->initExchange( fields[ipatch], 1, smpi );
+                vecPatches( ipatch )->initExchange( fields[ipatch], 1, smpi, is_memory_on_device );
             else
                 vecPatches( ipatch )->initExchangeComplex( fields[ipatch], 1, smpi );
         }
@@ -1200,28 +1193,23 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
 
         #pragma omp for schedule(static) private(pt1,pt2)
         for( unsigned int ipatch=0 ; ipatch<fields.size() ; ipatch++ ) {
-
+           
             gsp[1] = ( oversize[1] + 1 + fields[0]->isDual_[1] ); //Ghost size primal
             if( vecPatches( ipatch )->MPI_me_ == vecPatches( ipatch )->MPI_neighbor_[1][0] ) {
                 field1 = static_cast<F *>( fields[vecPatches( ipatch )->neighbor_[1][0]-h0]  );
                 field2 = static_cast<F *>( fields[ipatch] );
-                //pt1 = &( *field1 )( size[1]*nz_ );
                 pt1 = &( *field1 )( 0 );
                 pt2 = &( *field2 )( 0 );
 
                 const unsigned int start_pt1 = size[1]*nz_;
 #ifdef SMILEI_ACCELERATOR_GPU_OACC
-                //int ptsize = vecPatches.B1_localy[ipatch]->size();
-                //int size1 = size[1];
-                #pragma acc parallel if(is_memory_on_device) present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])  //(pt1[0-size1*nz_:ptsize],pt2[0:ptsize])//-size1*nz_
+                #pragma acc parallel if(is_memory_on_device) present(pt1[0:nx_*ny_*nz_],pt2[0:nx_*ny_*nz_])
                 #pragma acc loop gang worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
-                //const int ptsize = ( nx_ * ny_ * nz_ ) - ( ny_ * nz_ ) + oversize[1] * nz_ + gsp[1] * nz_;
                 #pragma omp target if(is_memory_on_device)
                 #pragma omp teams distribute parallel for collapse( 2 )
 #endif
                 for( unsigned int in = 0 ; in < nx_ ; in ++ ) {
-                    //for (unsigned int in = oversize[0] ; in < nx_-oversize[0] ; in ++){ // <== This doesn't work. Why ??
                     unsigned int i = in * ny_*nz_;
                     for( unsigned int j = 0 ; j < oversize[1]*nz_ ; j++ ) {
                         // Rewrite with memcpy ?
@@ -1245,10 +1233,10 @@ void SyncVectorPatch::exchangeSynchronizedPerDirection( std::vector<Field *> fie
             if ( vecPatches( ipatch )->is_a_MPI_neighbor( 0, iNeighbor ) ) {
                 fields[ipatch]->create_sub_fields  ( 0, iNeighbor, oversize[0] );
                 fields[ipatch]->extract_fields_exch( 0, iNeighbor, oversize[0] );
-            }
+	    }
         }
         if ( !dynamic_cast<cField*>( fields[ipatch] ) )
-            vecPatches( ipatch )->initExchange( fields[ipatch], 0, smpi );
+            vecPatches( ipatch )->initExchange( fields[ipatch], 0, smpi, is_memory_on_device );
         else
             vecPatches( ipatch )->initExchangeComplex( fields[ipatch], 0, smpi );
     }

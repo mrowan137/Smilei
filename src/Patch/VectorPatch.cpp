@@ -1355,20 +1355,6 @@ void VectorPatch::runAllDiags( Params &/*params*/, SmileiMPI *smpi, unsigned int
     for( unsigned int idiag = 0 ; idiag < globalDiags.size() ; idiag++ ) {
         diag_timers_[idiag]->restart();
 
-// #if defined( SMILEI_ACCELERATOR_GPU)
-//         if( globalDiags[idiag]->timeSelection->theTimeIsNow( itime ) &&
-//             !data_on_cpu_updated &&
-//             ( itime > 0 ) ) {
-//     #pragma omp single
-//             {
-//                 // Must be done by one and only one thread
-//                 copyDeviceStateToHost(diag_flag);
-//             }
-//     #pragma omp barrier
-//             data_on_cpu_updated = true;
-//         }
-// #endif
-
         #pragma omp single
         globalDiags[idiag]->theTimeIsNow_ = globalDiags[idiag]->prepare( itime );
 
@@ -1472,20 +1458,6 @@ void VectorPatch::runAllDiags( Params &/*params*/, SmileiMPI *smpi, unsigned int
     // Local diags : fields, probes, tracks
     for( unsigned int idiag = 0 ; idiag < localDiags.size() ; idiag++ ) {
         diag_timers_[globalDiags.size()+idiag]->restart();
-
-// #if defined( SMILEI_ACCELERATOR_GPU )
-//         if( localDiags[idiag]->timeSelection->theTimeIsNow( itime ) &&
-//             !data_on_cpu_updated &&
-//             ( itime > 0 ) ) {
-//     #pragma omp single
-//             {
-//                 // Must be done by one and only one thread
-//                 copyDeviceStateToHost(true, true, diag_flag);
-//             }
-//     #pragma omp barrier
-//             data_on_cpu_updated = true;
-//         }
-// #endif
 
         #pragma omp single
         localDiags[idiag]->theTimeIsNow_ = localDiags[idiag]->prepare( itime );
@@ -4295,9 +4267,15 @@ void VectorPatch::moveWindow(
 
 #if defined( SMILEI_ACCELERATOR_GPU )
     if( simWindow->isMoving( time_dual ) || itime == simWindow->getAdditionalShiftsIteration() ) {
-        //copyParticlesFromDeviceToHost();
-        //copyFieldsFromDeviceToHost();
-        //copyDeviceStateToHost(true,false);
+        //copyParticlesFromDeviceToHost(); 
+        copyFieldsFromDeviceToHost(); // might only be needed for the patch needing MPI
+        /*const int npatches = this->size();
+        for( int ipatch = 0; ipatch < npatches; ipatch++ ) {
+            //patches_[ipatch]->copyFieldsFromDeviceToHost();
+            patches_[ipatch]->EMfields->Ex_->copyFromDeviceToHost();
+            patches_[ipatch]->EMfields->Ey_->copyFromDeviceToHost();
+            patches_[ipatch]->EMfields->Ez_->copyFromDeviceToHost(); // insufficient, need the other fields as well
+        }*/
     }
 #endif
 
