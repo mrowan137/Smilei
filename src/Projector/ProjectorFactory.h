@@ -8,6 +8,7 @@
 #include "Projector2D2Order.h"
 #include "Projector2D2OrderGPU.h"
 #include "Projector2D4Order.h"
+#include "Projector2D4OrderGPU.h"
 #include "Projector3D2Order.h"
 #include "Projector3D2OrderGPU.h"
 #include "Projector3D4Order.h"
@@ -60,7 +61,11 @@ public:
             }
         } else if( ( params.geometry == "2Dcartesian" ) && ( params.interpolation_order == ( unsigned int )4 ) ) {
             if( !vectorization ) {
-                Proj = new Projector2D4Order( params, patch );
+                #if defined( SMILEI_ACCELERATOR_GPU )
+                    Proj = new Projector2D4OrderGPU( params, patch );
+                #else
+                    Proj = new Projector2D4Order( params, patch );
+                #endif
             }
             else {
                 Proj = new Projector2D4OrderV( params, patch );
