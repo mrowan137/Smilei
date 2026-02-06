@@ -174,8 +174,12 @@ of AM simulations scales approximately as 2D simulations multiplied by the
 number of modes. However, a higher number of macro-particles might be necessary
 to obtain convergence of the results (always check the convergence of your
 results by increasing the number of macro-particles and modes).
-A rule of thumb is to use at least 4 times the number of modes as
+A rule of thumb is to use at least 4 times the highest mode number :math:`m` as
 macro-particles along :math:`\theta`.
+For example, with ``number_of_AM=2``, it would correspond to at least 4 
+macro-particles along :math:`\theta` (being :math:`m=1` the highest mode number in that case). 
+As an exception, a case with ``number_of_AM=1`` could in principle be run with only 1 macro-particle 
+along :math:`\theta`, because the fields would have no variation along :math:`\theta`.
 
 
 ----
