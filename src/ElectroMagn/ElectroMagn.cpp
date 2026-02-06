@@ -571,11 +571,12 @@ void ElectroMagn::applyPrescribedFields( Patch *patch, double time )
                         ( *El )( i, oversize_r-1 )=-( *El )( i, oversize_r+1 );
                     }
                     for( unsigned int i=0 ; i<nl_p  ; i++ ) {
-                        ( *Et )( i, oversize_r )= -Icpx/8.*( 9.*( *Er )( i, oversize_r+1 )-( *Er )( i, oversize_r+2 ) );// div( E mode 1) = 0 on axis.
+                        ( *Et )( i, oversize_r )= -( 4.*Icpx*( *Er )( i, oversize_r+1 ) + ( *Et )( i, oversize_r+1 ) )/3.;// div( E mode 1) = 0 on axis.
                         ( *Et )( i, oversize_r-1 )=( *Et )( i, oversize_r+1 );
                     }
                     for( unsigned int i=0 ; i<nl_p ; i++ ) {
-                        ( *Er )( i, oversize_r ) = ( *Er )( i, oversize_r+1 );
+                        ( *Er )( i, oversize_r ) = 2.*Icpx*( *Et )( i, oversize_r ) - ( *Er )( i, oversize_r+1 );
+
                     }
                     for( unsigned int i=0 ; i<nl_p  ; i++ ) {
                         ( *Bl )( i, oversize_r )= -( *Bl )( i, oversize_r+1 ); // Zero Bl mode 1 on axis.
@@ -588,7 +589,8 @@ void ElectroMagn::applyPrescribedFields( Patch *patch, double time )
                         ( *Br )( i, 1 )=( *Br )( i, 3 );
                     }
                     for( unsigned int i=0; i<nl_d ; i++ ) {
-                        ( *Bt )( i, oversize_r )= ( *Bt )( i, oversize_r+1 ); // Non zero Bt mode 1 on axis.
+                        ( *Bt )( i, oversize_r )= -2.*Icpx*( *Br )( i, oversize_r ) - ( *Bt )( i, oversize_r+1 ); 
+
                     }
 
                 } else { // mode > 1

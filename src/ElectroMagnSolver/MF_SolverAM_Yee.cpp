@@ -97,7 +97,7 @@ void MF_SolverAM_Yee::operator()( ElectroMagn *fields )
                     ( *Br )( i, oversize_r-1 )=( *Br )( i, oversize_r+1 );
                 }
                 for( unsigned int i=0; i<nl_d ; i++ ) {
-                    ( *Bt )( i, oversize_r )= ( *Bt )( i, oversize_r+1 ); // Non zero Bt mode 1 on axis.
+                    ( *Bt )( i, oversize_r )= -2.*Icpx*( *Br )( i, oversize_r ) - ( *Bt )( i, oversize_r+1 ); //interpolation of Bt on axis must be equal to -iBr.
                 }
 
             } else { // modes > 1
