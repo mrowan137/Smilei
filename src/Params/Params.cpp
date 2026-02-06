@@ -1900,7 +1900,8 @@ int Params::getGPUClusterWidth() const
 
 int Params::getGPUClusterGhostCellBorderWidth() const
 {
-    return getGPUClusterGhostCellBorderWidth( interpolation_order );
+    //It is assumed all oversize are equal
+    return 2*oversize[0]+1;
 }
 
 int Params::getGPUClusterCellVolume() const
@@ -1923,6 +1924,7 @@ int Params::getGPUInterpolationClusterCellVolume() const
 
 int Params::getGPUBinCount( int dimension_id ) const
 {
+
     const int cells_in_dimension = patch_size_[dimension_id - 1];
 
     const int kGPUBinCount = cells_in_dimension / getGPUClusterWidth();
@@ -1934,10 +1936,13 @@ int Params::getGPUBinCount() const
 {
     const int cells_in_cluster_volume = getGPUClusterCellVolume();
 
+    std::cout << " in params get GPU bin count, cells in cluster volume = " << cells_in_cluster_volume << " n_cell_per_patch = " << n_cell_per_patch << std::endl;
+
     if( cells_in_cluster_volume < 0 ) {
         // Unsupported dimension
         return -1;
     }
+
 
     const int kGPUBinCount = n_cell_per_patch / cells_in_cluster_volume;
 
