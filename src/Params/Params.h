@@ -459,6 +459,8 @@ public:
                                                         // NOTE: Instead we add a row and column in the cached field
                                                         // value.
                                                         1,
+                                                    -1,
+                                                    2 * 4 + 1,
                                                     -1 };
         return kGPUClusterGhostCellCount[interpolation_order - 1];
     //#else
