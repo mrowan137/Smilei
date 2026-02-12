@@ -137,6 +137,7 @@ namespace cudahip2d {
                                          int          j_domain_begin,
                                          int          nprimy,
                                          int          not_spectral_,
+                                         unsigned int oversize_,
                                          bool         cell_sorting )
         {
             // TODO(Etienne M): refactor this function. Break it into smaller
@@ -173,6 +174,11 @@ namespace cudahip2d {
             __shared__ ReductionFloat Jx_scratch_space[kFieldScratchSpaceSize];
             __shared__ ReductionFloat Jy_scratch_space[kFieldScratchSpaceSize];
             __shared__ ReductionFloat Jz_scratch_space[kFieldScratchSpaceSize];
+            //extern __shared__ ReductionFloat J_scratch_space[];
+            //ReductionFloat *Jx_scratch_space = J_scratch_space;
+            //ReductionFloat *Jy_scratch_space = (ReductionFloat*)&Jx_scratch_space[kFieldScratchSpaceSize];// ReductionFloat *Jy_scratch_space = &J_scratch_space[1*kFieldScratchSpaceSize];
+            //ReductionFloat *Jz_scratch_space = (ReductionFloat*)&Jy_scratch_space[kFieldScratchSpaceSize];// ReductionFloat *Jz_scratch_space = &J_scratch_space[2*kFieldScratchSpaceSize];
+
 
             // Init the shared memory
 
@@ -300,10 +306,12 @@ namespace cudahip2d {
                 // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
                 const int ipo = iold[0 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
                 const int jpo = iold[1 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 // Jx
 
@@ -438,8 +446,8 @@ namespace cudahip2d {
                 const unsigned int local_x_scratch_space_coordinate = field_index / GPUClusterWithGCWidth;
                 const unsigned int local_y_scratch_space_coordinate = field_index % GPUClusterWithGCWidth;
 
-                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate;
-                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate;
+                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate+(oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
+                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate+(oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/;
 
                 // The indexing order is: x * ywidth * zwidth + y * zwidth + z
                 const unsigned int global_memory_index = global_x_scratch_space_coordinate * nprimy + global_y_scratch_space_coordinate;
@@ -484,6 +492,7 @@ namespace cudahip2d {
                                             int          j_domain_begin,
                                             int          nprimy,
                                             int          not_spectral_,
+                                            unsigned int oversize_,
                                             bool         cell_sorting )
         {
             // TODO(Etienne M): refactor this function. Break it into smaller
@@ -519,6 +528,13 @@ namespace cudahip2d {
             __shared__ ReductionFloat Jy_scratch_space[kFieldScratchSpaceSize];
             __shared__ ReductionFloat Jz_scratch_space[kFieldScratchSpaceSize];
             __shared__ ReductionFloat rho_scratch_space[kFieldScratchSpaceSize];
+            //extern __shared__ ReductionFloat Jrho_scratch_space[];
+            //ReductionFloat *Jx_scratch_space = Jrho_scratch_space;
+            //ReductionFloat *Jy_scratch_space = (ReductionFloat*)&Jx_scratch_space[kFieldScratchSpaceSize]; //ReductionFloat *Jy_scratch_space = Jrho_scratch_space[1*kFieldScratchSpaceSize];
+            //ReductionFloat *Jz_scratch_space = (ReductionFloat*)&Jy_scratch_space[kFieldScratchSpaceSize]; //ReductionFloat *Jz_scratch_space = Jrho_scratch_space[2*kFieldScratchSpaceSize];
+            //ReductionFloat *rho_scratch_space = (ReductionFloat*)&Jz_scratch_space[kFieldScratchSpaceSize]; //ReductionFloat *rho_scratch_space = Jrho_scratch_space[3*kFieldScratchSpaceSize];
+           
+
 
             // Init the shared memory
 
@@ -637,10 +653,12 @@ namespace cudahip2d {
                 // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
                 const int ipo = iold[0 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */-
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
                 const int jpo = iold[1 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */-
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 // Jx
 
@@ -724,8 +742,8 @@ namespace cudahip2d {
                 const unsigned int local_x_scratch_space_coordinate = field_index / Params::getGPUClusterWithGhostCellWidth( 2 /* 2D */, 2 /* 2nd order interpolation */ );
                 const unsigned int local_y_scratch_space_coordinate = field_index % Params::getGPUClusterWithGhostCellWidth( 2 /* 2D */, 2 /* 2nd order interpolation */ );
 
-                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate;
-                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate;
+                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate+(oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
+                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate+(oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 // The indexing order is: x * ywidth * zwidth + y * zwidth + z
                 const unsigned int global_memory_index = global_x_scratch_space_coordinate * nprimy + global_y_scratch_space_coordinate;
@@ -769,6 +787,7 @@ namespace cudahip2d {
                              int    j_domain_begin,
                              int    nprimy,
                              int    not_spectral_,
+                             unsigned int oversize_,
                              bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 2 /* 2D */ ) != -1 &&
@@ -818,6 +837,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting );
 
         checkHIPErrors( ::hipDeviceSynchronize() );
@@ -848,6 +868,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );
@@ -884,6 +905,7 @@ namespace cudahip2d {
                                        int    j_domain_begin,
                                        int    nprimy,
                                        int    not_spectral_,
+                                       unsigned int oversize_,
                                        bool cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 2 /* 2D */ ) != -1 &&
@@ -933,6 +955,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting );
 
         checkHIPErrors( ::hipDeviceSynchronize() );
@@ -964,6 +987,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );
