@@ -274,8 +274,7 @@ void SyncVectorPatch::sumAllComponents( std::vector<Field *> &fields, VectorPatc
                     const unsigned int data_size = ghost_size_x * ny_ * nz_; //Number of elements to be summed.
 
 #if   defined( SMILEI_ACCELERATOR_GPU_OACC )
-                    size_t ptsize = vecPatches.densitiesLocalx[ilocal]->size();
-                    #pragma acc parallel if ( is_memory_on_device) present(pt1[0:ptsize],pt2[0:ptsize])
+                    #pragma acc parallel if ( is_memory_on_device) present(pt1,pt2)
                     #pragma acc loop worker vector
 #elif defined( SMILEI_ACCELERATOR_GPU_OMP )
                     #pragma omp target if( is_memory_on_device )

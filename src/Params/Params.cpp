@@ -1936,8 +1936,6 @@ int Params::getGPUBinCount() const
 {
     const int cells_in_cluster_volume = getGPUClusterCellVolume();
 
-    std::cout << " in params get GPU bin count, cells in cluster volume = " << cells_in_cluster_volume << " n_cell_per_patch = " << n_cell_per_patch << std::endl;
-
     if( cells_in_cluster_volume < 0 ) {
         // Unsupported dimension
         return -1;
