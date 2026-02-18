@@ -1683,7 +1683,556 @@ There are several syntaxes to introduce a laser in :program:`Smilei`:
   When injecting on ``"ymin"`` or ``"ymax"``, the incidence angles corresponds to
   rotations around ``x`` and ``z``, respectively.
 
-.. rubric:: 6. Defining a gaussian wave with Azimuthal Fourier decomposition
+.. rubric:: 6. Defining 2D smoothed beam
+
+..
+
+For two-dimensional simulations, you may use the specific laser creator for define smoothed laser beam::
+       
+    LaserSmoothing3D(
+        box_side                       = "xmin",
+        a0                             = 1.,
+        omega                          = 1.,
+        focus                          = None,
+        incidence_angle                = 0.,
+        polarization_phi               = 0.,
+        ellipticity                    = 0.,
+        phase_zero                     = 0.,
+        Lf                             = 3.00e6,
+        fnumber                        = 8.00,
+        N                              = 6,
+        rpp_random_seed                = 10,
+        temporal_smoothing             = None,
+        temporal_smoothing_random_seed = 42,
+        omega_m                        = 0.,
+        modulation_depth               = 0,
+        rpp_per_mode                   = False,
+        rpp_seed_per_mode              = [42],
+        omega_m_trans                  = 0.,
+        modulation_depth_trans         = 0,
+        mode2generate_trans            = None, 
+        omega_m_longi                  = 0.,
+        modulation_depth_longi         = 0,
+        mode2generate_longi            = None,
+        space_envelope                 = lambda y,z:1.,
+        time_envelope                  = tconstant(),
+        chirp_profile                  = tconstant()
+    )
+
+Assuming the beam propagate along x direction, this implements a specific spatial and phase profile produced by a random phase plate of the form (`Cross-beam energy transfer between spatially smoothed laser beams" [A. Oudin, A. Debayle, C. Ruyer] <https://doi.org/10.1063/5.0109511>`__):
+
+  .. math::
+            
+    \begin{multline}
+      \widetilde{E}(x,y,z,n=0) = \frac{E_0}{2\sqrt{\pi}} \sqrt{\frac{f_0}{f_0-x}} \mathrm{e}^{ik_0x}\mathrm{e}^{-\frac{ik_0 y^2}{2(f_0-x)} } \times \text{...} \\
+      \text{...} \sum_{N_y} \mathrm{e}^{i (\varphi_N+\delta_N)} \big[\mathrm{erf}(\mathrm{e}^{-\frac{i \pi}{4}} K_0(x)\cdot (a_{N_y+1} - \frac{yf_0}{f_0-x})) - \mathrm{erf}(\mathrm{e}^{-\frac{i \pi}{4}} K_0(x)\cdot (a_{N_y} - \frac{yf_0}{f_0-x})) \big] \big]
+    \end{multline}
+  
+with :math:`k_0` the wavenumber, :math:`E_0` the field amplitude, :math:`f_0` the focal length :math:`K_0(x)=\lvert k_0(f_0-x)/(2xf_0) \lvert`
+and :math:`\varphi_N + \delta_N = \varphi_{N_y,N_Z} + \delta_{N_y,N_Z}` is the random phase, and optical delay induced by each element of the plate (:math:`\varphi_N=\{0,\pi\}` for RPP or :math:`[0,2\pi[` for CPP and :math:`\delta_N=[0,2\pi[` for an Echelon).
+
+To avoid space correlation, :math:`\varphi_{N_y,N_Z}\neq\varphi_{N_y}+\varphi_{N_Z}` :math:`\delta_{N_y,N_Z}\neq\delta_{N_y}+\delta_{N_Z}`.
+  
+In order to take into account the temporal behaviour of the field and the bandwidth of the beam (smoothing by temporal dispersion), we must consider the field is no longer monochromatic and each mode will have it's own amplitude and phase, relying on the smoothing technic used (Longitudinal Smoothing by Spectral Dispersion LSSD, Transverse Smoothing by Spectral Dispersion TSSD or Broadband). Each mode routinely produce one ``Laser Block``
+
+  .. py:data:: box_side
+
+    :type: a string
+    :default: ``"xmin"``
+
+    Side of the box from which the laser originates: ``"xmin"``, ``"xmax"``, ``"ymin"``,
+    ``"ymax"``.
+
+    In the cases of ``"ymin"`` or ``"ymax"``, replace, in the following profiles,
+    coordinates *y* by *x*, and fields :math:`B_y` by :math:`B_x`.
+    
+  .. py:data:: a0
+
+    :type: double
+    :default: 1.
+    
+    The normalized vector potential at focus. Note that :math:`E_0 = (a_0 \omega/N_{tot}) / \sqrt{k_0 (dy)^2 / (2 L_f \pi^2) } ` with :math:`dy=D/N_y`
+    and where D is the effective aperture of the optical system (typically the size of the phase plate)
+  
+  .. py:data:: omega
+
+    :type: double
+    :default: 1.
+
+    The laser angular frequency.
+    
+  .. py:data:: focus
+
+    :type: A list of two floats ``[X, Y]``
+    :default: ``[0,0]``
+
+    The ``X``, ``Y`` positions of the laser focus.
+
+  .. py:data:: incidence_angle
+
+    :type: double
+    :default: 0.
+
+    The angle of the laser beam relative to the normal to the injection plane, in radians, in the ``X``, ``Y`` plane.
+    
+  .. py:data:: polarization_phi
+
+    :type: double
+    :default: 0.
+
+    The angle of the polarization ellipse major axis relative to the X-Y plane, in radians.
+
+  .. py:data:: ellipticity
+
+    :type: double
+    :default: 0.
+
+    The polarization ellipticity: 0 for linear and :math:`\pm 1` for circular.
+    Only linear is taking into account for now.
+
+  .. py:data:: phase_zero
+              
+    :type: double
+    :default: 0.
+    
+    An extra phase added to both the envelope and to the carrier wave.
+    
+  .. py:data:: Lf
+          
+    :type: double 
+    :default: 3.00e6
+    
+    The focal length in code units
+      
+  .. py:data:: fnumber
+
+    :type: double
+    :default: 8.
+    
+    The ratio :math:`L_f/D` where D is the effective aperture of the optical system (typically the size of the phase plate)
+      
+  .. py:data:: N
+
+    :type: int
+    :default: 6
+
+    List of number of phase plate element in D
+      
+  .. py:data:: rpp_random_seed
+
+    :type: integer
+    :default: 10
+
+    ``None`` or an int to chose a seed in order to define each phase element of a random phase plate (``None`` is equal no random, all element have zero phase-shift)
+      
+  .. py:data:: temporal_smoothing
+
+    :type: a string
+    :default: None
+
+    Type of temporal smoothing ``None/"Broadband"/"TSSD"/"LSSD"``
+      
+  .. py:data:: temporal_smoothing_random_seed
+
+    :type: integer
+    :default: 42
+
+    Seed in order to have a Random Phase for each mode for ``"Broadband Laser"``
+      
+  .. py:data:: omega_m
+
+    :type: a double
+    :default: 0.
+
+    Modulation frequency for ``"Broadband Laser"``. It's a fraction of the central angular frequency.
+      
+  .. py:data:: modulation_depth
+
+    :type: an int
+    :default: 0
+  
+    For ``"Broadband Laser"``, depth *'m'* of modulation and frequency bandwith = 2m
+      
+  .. py:data:: rpp_per_mode
+       
+   :type: bool
+   :default: False
+ 
+   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode when set to ``True``
+      
+  .. py:data:: rpp_seed_per_mode
+      
+    :type: a list of *int*
+    :default: [42]
+ 
+    For ``"Broadband Laser"``, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
+      
+  .. py:data:: omega_m_trans
+
+    :type: double
+    :default: 0.
+
+    For ``"TSSD"``, modulation frequency for transverse SSD.
+      
+  .. py:data:: modulation_depth_trans
+
+    :type: int
+    :default: 0
+
+    For ``"TSSD"``, depth 'm' of modulation. Frequency bandwith = 2m for transverse SSD.
+      
+  .. py:data:: mode2generate_trans
+
+    :type: int
+    :default: None
+
+    For ``"TSSD"``, user can choose to generate only one mode, for ebug purpose.
+      
+  .. py:data:: omega_m_longi
+
+    :type: double
+    :default: 0.
+ 
+    For ``"LSSD"``, modulation frequency for longitudinal SSD.
+      
+  .. py:data:: modulation_depth_longi
+
+    :type: int
+    :default: 0
+
+    For ``"LSSD"``, depth 'm' of modulation. Frequency bandwith = 2m for longitudinal SSD.
+      
+  .. py:data:: mode2generate_longi
+
+    :type: int
+    :default: None
+
+    For ``"LSSD"``, user can choose to generate only one mode, for ebug purpose.
+         
+  .. py:data:: time_envelope
+
+    :type: a *python* function or a :doc:`time profile <profiles>`
+    :default:  ``tconstant()``
+
+    The temporal envelope of the laser (field, not intensity).
+
+  .. py:data:: space_envelope
+
+    :type: a list of two *python* functions or two :doc:`spatial profiles <profiles>`
+    :default: ``lambda y:1.``
+
+    The two spatial envelopes :math:`S_y` and :math:`S_z`. It super-impose a user spatial profile on the phase plate spatial profile
+
+
+.. rubric:: 7. Defining 2D smoothed beam with periodic Boundary Condition
+
+..
+
+For two-dimensional simulations with peridic Boundary Condition, you may use the specific laser creator for define smoothed laser beam. It's the same as previous block, but user have to be carefull of the ``fnumber`` value and/or the number ``N`` of element. Giving :math:`L_y` the transverse size of the box:
+
+    .. math::
+       fnumber = L_y (k_0 / 2 \pi) / N
+
+As an example::
+
+  import numpy as np
+
+  l0 = 2*np.pi # The unit length of the simulation or laser central wavelength
+  Lsim = [256*l0,64*l0]
+
+  myNRPPElement = 16
+  myfnumber = 64 / myNRPPElement # Lsim[1]/l0 / myNRPPElement
+
+  LaserSmoothingPeriodic2D(
+      ....
+      fnumber = myfnumber,
+      N       = myNRPPElement, 
+      ....
+  )
+
+
+
+.. rubric:: 8. Defining 3D smoothed beam
+
+..
+
+For three-dimensional simulations, you may use the specific laser creator for define smoothed laser beam::
+       
+    LaserSmoothing3D(
+        box_side                       = "xmin",
+        a0                             = 1.,
+        omega                          = 1.,
+        focus                          = None,
+        incidence_angle                = 0.,
+        polarization_phi               = 0.,
+        ellipticity                    = 0.,
+        phase_zero                     = 0.,
+        Lf                             = 3.00e6,
+        fnumber                        = 8.00,
+        N                              = [6,6],
+        rpp_random_seed                = 10.,
+        temporal_smoothing             = None,
+        temporal_smoothing_random_seed = 42,
+        omega_m                        = 0.,
+        modulation_depth               = 0,
+        rpp_per_mode                   = False,
+        rpp_seed_per_mode              = [42],
+        omega_m_trans                  = 0.,
+        modulation_depth_trans         = 0,
+        mode2generate_trans            = None, 
+        omega_m_longi                  = 0.,
+        modulation_depth_longi         = 0,
+        mode2generate_longi            = None,
+        space_envelope                 = lambda y,z:1.,
+        time_envelope                  = tconstant(),
+        chirp_profile                  = tconstant()
+    )
+
+Assuming the beam propagate along x direction, this implements a specific spatial and phase profile produced by a random phase plate of the form (`Cross-beam energy transfer between spatially smoothed laser beams" [A. Oudin, A. Debayle, C. Ruyer] <https://doi.org/10.1063/5.0109511>`__):
+
+  .. math::
+       
+    \begin{multline}
+      \widetilde{E}(x,y,z,n=0) = \frac{E_0}{2\sqrt{\pi}} \sqrt{\frac{f_0}{f_0-x}} \mathrm{e}^{ik_0x}\mathrm{e}^{-\frac{ik_0(y^2+z^2)}{2(f_0-x)} } \times \text{...} \\
+      \text{...} \sum_{N_y} \sum_{N_z} \mathrm{e}^{i (\varphi_N+\delta_N)} \big[\mathrm{erf}(\mathrm{e}^{-\frac{i \pi}{4}} K_0(x)\cdot (a_{N_y+1} - \frac{yf_0}{f_0-x})) - \mathrm{erf}(\mathrm{e}^{-\frac{i \pi}{4}} K_0(x)\cdot (a_{N_y} - \frac{yf_0}{f_0-x})) \big] \times \text{...} \\
+      \text{...} \big[\mathrm{erf}(\mathrm{e}^{-\frac{i \pi}{4}} K_0(x)\cdot (b_{N_z+1} - \frac{zf_0}{f_0-x})) - \mathrm{erf}(\mathrm{e}^{-\frac{i \pi}{4}} K_0(x)\cdot (b_{N_z} - \frac{zf_0}{f_0-x})) \big]
+    \end{multline}
+  
+with :math:`k_0` the wavenumber, :math:`E_0` the field amplitude, :math:`f_0` the focal length :math:`K_0(x)=\lvert k_0(f_0-x)/(2xf_0) \lvert`
+and :math:`\varphi_N + \delta_N = \varphi_{N_y,N_Z} + \delta_{N_y,N_Z}` is the random phase, and optical delay induced by each element of the plate (:math:`\varphi_N=\{0,\pi\}` for RPP or :math:`[0,2\pi[` for CPP and :math:`\delta_N=[0,2\pi[` for an Echelon).
+
+To avoid space correlation, :math:`\varphi_{N_y,N_Z}\neq\varphi_{N_y}+\varphi_{N_Z}` :math:`\delta_{N_y,N_Z}\neq\delta_{N_y}+\delta_{N_Z}`.
+  
+In order to take into account the temporal behaviour of the field and the bandwidth of the beam (smoothing by temporal dispersion), we must consider the field is no longer monochromatic and each mode will have it's own amplitude and phase, relying on the smoothing technic used (Longitudinal Smoothing by Spectral Dispersion LSSD, Transverse Smoothing by Spectral Dispersion TSSD or Broadband). Each mode routinely produce one ``Laser Block``
+
+  .. py:data:: box_side
+
+    :type: a string
+    :default: ``"xmin"``
+
+    Side of the box from which the laser originates: ``"xmin"``, ``"xmax"``, ``"ymin"``,
+    ``"ymax"``, ``"zmin"`` or ``"zmax"``.
+
+    In the cases of ``"ymin"`` or ``"ymax"``, replace, in the following profiles,
+    coordinates *y* by *x*, and fields :math:`B_y` by :math:`B_x`.
+
+    In the cases of ``"zmin"`` or ``"zmax"``, replace, in the following profiles,
+    coordinates *y* by *x*, coordinates *z* by *y*, fields :math:`B_y` by :math:`B_x`
+    and fields :math:`B_z` by :math:`B_y`.
+    
+  .. py:data:: a0
+
+    :type: double
+    :default: 1.
+    
+    The normalized vector potential at focus. Note that :math:`E_0 = (a_0 \omega/N_{tot}) / \sqrt{k_0 (dy)^2 / (2 L_f \pi^2) } / \sqrt{k_0 (dz)^2 / (2 L_f \pi^2)}` with :math:`dy=D/N_y` and :math:`dz=D/N_z`
+    and where D is the effective aperture of the optical system (typically the size of the phase plate)
+  
+  .. py:data:: omega
+
+    :type: double
+    :default: 1.
+
+    The laser angular frequency.
+    
+  .. py:data:: focus
+
+    :type: A list of three floats ``[X, Y, Z]``
+    :default: ``[0,0,0]``
+
+    The ``X``, ``Y`` and ``Z`` positions of the laser focus.
+
+  .. py:data:: incidence_angle
+
+    :type: double
+    :default: 0.
+
+    The angle of the laser beam relative to the normal to the injection plane, in radians, in the ``X``, ``Y`` plane.
+    
+  .. py:data:: polarization_phi
+
+    :type: double
+    :default: 0.
+
+    The angle of the polarization ellipse major axis relative to the X-Y plane, in radians.
+
+  .. py:data:: ellipticity
+
+    :type: double
+    :default: 0.
+
+    The polarization ellipticity: 0 for linear and :math:`\pm 1` for circular.
+    Only linear is taking into account for now.
+
+  .. py:data:: phase_zero
+         
+    :type: double
+    :default: 0.
+    
+    An extra phase added to both the envelope and to the carrier wave.
+    
+  .. py:data:: Lf
+     
+    :type: double 
+    :default: 3.00e6
+    
+    The focal length in code units
+      
+  .. py:data:: fnumber
+
+    :type: double
+    :default: 8.
+    
+    The ratio :math:`L_f/D` where D is the effective aperture of the optical system (typically the size of the phase plate)
+      
+  .. py:data:: N
+
+    :type: a list of two *int*
+    :default: ``[ 0, 0 ]``
+
+    List of number of phase plate element per direction (for Ntot=36, then ``N=[6,6]``)
+      
+  .. py:data:: rpp_random_seed
+
+    :type: integer
+    :default: 10
+
+    ``None`` or an int to chose a seed in order to define each phase element of a random phase plate (``None`` is equal no random, all element have zero phase-shift)
+      
+  .. py:data:: temporal_smoothing
+
+    :type: a string
+    :default: None
+
+    Type of temporal smoothing ``None/"Broadband"/"TSSD"/"LSSD"``
+      
+  .. py:data:: temporal_smoothing_random_seed
+
+    :type: integer
+    :default: 42
+
+    Seed in order to have a Random Phase for each mode for ``"Broadband Laser"``
+      
+  .. py:data:: omega_m
+
+    :type: a double
+    :default: 0.
+
+    Modulation frequency for ``"Broadband Laser"``. It's a fraction of the central angular frequency.
+      
+  .. py:data:: modulation_depth
+
+    :type: an int
+    :default: 0
+  
+    For ``"Broadband Laser"``, depth *'m'* of modulation and frequency bandwith = 2m
+      
+  .. py:data:: rpp_per_mode
+  
+   :type: bool
+   :default: False
+ 
+   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode when set to ``True``
+      
+  .. py:data:: rpp_seed_per_mode
+ 
+    :type: a list of *int*
+    :default: [42]
+ 
+    For ``"Broadband Laser"``, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
+      
+  .. py:data:: omega_m_trans
+
+    :type: double
+    :default: 0.
+
+    For ``"TSSD"``, modulation frequency for transverse SSD.
+      
+  .. py:data:: modulation_depth_trans
+
+    :type: int
+    :default: 0
+
+    For ``"TSSD"``, depth 'm' of modulation. Frequency bandwith = 2m for transverse SSD.
+      
+  .. py:data:: mode2generate_trans
+
+    :type: int
+    :default: None
+
+    For ``"TSSD"``, user can choose to generate only one mode, for ebug purpose.
+      
+  .. py:data:: omega_m_longi
+
+    :type: double
+    :default: 0.
+ 
+    For ``"LSSD"``, modulation frequency for longitudinal SSD.
+      
+  .. py:data:: modulation_depth_longi
+
+    :type: int
+    :default: 0
+
+    For ``"LSSD"``, depth 'm' of modulation. Frequency bandwith = 2m for longitudinal SSD.
+      
+  .. py:data:: mode2generate_longi
+
+    :type: int
+    :default: None
+
+    For ``"LSSD"``, user can choose to generate only one mode, for ebug purpose.
+      
+  .. py:data:: direction
+
+    :type: a string
+    :default: 'y'
+
+    Direction of transverse TSSD : 'y' or 'z'
+    
+  .. py:data:: time_envelope
+
+    :type: a *python* function or a :doc:`time profile <profiles>`
+    :default:  ``tconstant()``
+
+    The temporal envelope of the laser (field, not intensity).
+
+  .. py:data:: space_envelope
+
+    :type: a list of two *python* functions or two :doc:`spatial profiles <profiles>`
+    :default: ``lambda y,z:1.``
+
+    The two spatial envelopes :math:`S_y` and :math:`S_z`. It super-impose a user spatial profile on the phase plate spatial profile
+
+.. rubric:: 9. Defining 3D smoothed beam with periodic Boundary Condition
+
+..
+
+For three-dimensional simulations with peridic Boundary Condition, you may use the specific laser creator for define smoothed laser beam. It's the same as previous block, but user have to paid attention in the ``fnumber`` value and/or the number ``N`` of element. Giving :math:`L_y` the transverse size of the box:
+
+    .. math::
+              fnumber = L_y (k_0 / 2 \pi) / N_y \\
+              fnumber = L_z (k_0 / 2 \pi) / N_z 
+
+As an example::
+
+  import numpy as np
+
+  l0 = 2*np.pi # The unit length of the simulation or laser central wavelength
+  Lsim = [256*l0,64*l0,128*l0]
+
+  myNRPPElement = [16,32]
+  myfnumber = 64 / myNRPPElement[0] # Lsim[1]/l0 / myNRPPElement[0]
+  # Same for myfnumber = 128 / myNRPPElement[1] # Lsim[2]/l0 / myNRPPElement[1]
+
+  LaserSmoothingPeriodic2D(
+      ....
+      fnumber = myfnumber,
+      N       = myNRPPElement, 
+      ....
+  )
+
+.. rubric:: 10. Defining a gaussian wave with Azimuthal Fourier decomposition
 
 ..
 
