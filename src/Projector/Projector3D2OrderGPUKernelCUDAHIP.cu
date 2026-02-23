@@ -930,7 +930,6 @@ namespace cudahip {
                                 int    nprimy,
                                 int    nprimz,
                                 int    not_spectral,
-                                unsigned int oversize_,
                                 bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 3 /* 3D */ ) != -1 &&
@@ -986,7 +985,6 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
-                            oversize_,
                             cell_sorting );
 
         checkHIPErrors( ::hipDeviceSynchronize() );
