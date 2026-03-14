@@ -770,9 +770,14 @@ namespace cudahip2d {
         // ================================================================
 
         static constexpr std::size_t kWorkgroupSize   = 256;
-        static constexpr std::size_t kNBufferCopies   = 8; // Very important to reduce contention
-        static constexpr std::size_t kShmemPad        = 2; // NCU give a local minimum
+        static constexpr std::size_t kNBufferCopies   = 1; // Very important to reduce contention, 1: Legacy. 8: is good
+        static constexpr std::size_t kShmemPad        = 0; // 0: Legacy. 2: NCU give a local minimum
         static constexpr std::size_t kMinBlocksPerSM  = 6; // NCU give a local minimum
+
+        //static constexpr std::size_t kWorkgroupSize   = 256;
+        //static constexpr std::size_t kNBufferCopies   = 8;
+        //static constexpr std::size_t kShmemPad        = 2;
+        //static constexpr std::size_t kMinBlocksPerSM  = 6;
 
         // ================================================================
         // ▲▲▲ END TUNING PARAMETERS ▲▲▲
@@ -781,9 +786,9 @@ namespace cudahip2d {
         const ::dim3 kBlockDimension{ static_cast<uint32_t>( kWorkgroupSize ), 1, 1 };
 
         // Type aliases — change ComputeFloat to float for mixed precision
-        using ComputeFloat         = float;   // ← set to float for mixed precision mode
+        using ComputeFloat         = double;  // ← set to float for mixed precision mode
         using ComputePositionFloat = double;  // ← always double (position safety)
-        using ReductionFloat       = float;
+        using ReductionFloat       = double;  // ← set to float for mixed precision mode
 
         auto KernelFunction = kernel::DepositCurrentDensity_2D_Order2<ComputeFloat, ComputePositionFloat, ReductionFloat, kWorkgroupSize, kNBufferCopies, kShmemPad, kMinBlocksPerSM>;
 #if defined ( __HIP__ ) 
@@ -894,9 +899,14 @@ namespace cudahip2d {
         // ================================================================
 
         static constexpr std::size_t kWorkgroupSize   = 256;
-        static constexpr std::size_t kNBufferCopies   = 8; // Very important to reduce contention
-        static constexpr std::size_t kShmemPad        = 2; // NCU give a local minimum
+        static constexpr std::size_t kNBufferCopies   = 1; // Very important to reduce contention, 1: Legacy. 8: is good
+        static constexpr std::size_t kShmemPad        = 0; // 0: Legacy. 2: NCU give a local minimum
         static constexpr std::size_t kMinBlocksPerSM  = 6; // NCU give a local minimum
+
+        //static constexpr std::size_t kWorkgroupSize   = 256;
+        //static constexpr std::size_t kNBufferCopies   = 8;
+        //static constexpr std::size_t kShmemPad        = 2;
+        //static constexpr std::size_t kMinBlocksPerSM  = 6;
 
         // ================================================================
         // ▲▲▲ END TUNING PARAMETERS ▲▲▲
@@ -904,10 +914,10 @@ namespace cudahip2d {
 
         const ::dim3 kBlockDimension{ static_cast<uint32_t>( kWorkgroupSize ), 1, 1 };
 
-        // [v4] Type aliases — change ComputeFloat to float for mixed precision
-        using ComputeFloat         = float;   // ← set to float for mixed precision mode
+        // Type aliases — change ComputeFloat to float for mixed precision
+        using ComputeFloat         = double;  // ← set to float for mixed precision mode
         using ComputePositionFloat = double;  // ← always double (position safety)
-        using ReductionFloat       = float;
+        using ReductionFloat       = double;  // ← set to float for mixed precision mode
 
         auto KernelFunction = kernel::DepositCurrentAndDensity_2D_Order2<ComputeFloat, ComputePositionFloat, ReductionFloat, kWorkgroupSize, kNBufferCopies, kShmemPad, kMinBlocksPerSM>;
 #if defined ( __HIP__ ) 

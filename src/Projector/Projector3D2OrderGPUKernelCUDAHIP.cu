@@ -808,10 +808,16 @@ namespace cudahip {
         // ▼▼▼ TUNING PARAMETERS — ADJUST THESE ▼▼▼
         // ================================================================
 
+        // Legacy parameters
         static constexpr std::size_t kWorkgroupSize   = 128;
         static constexpr std::size_t kNBufferCopies   = 1;
-        static constexpr std::size_t kShmemPad        = 2;
+        static constexpr std::size_t kShmemPad        = 0;
         static constexpr std::size_t kMinBlocksPerSM  = 10;
+
+        //static constexpr std::size_t kWorkgroupSize   = 128;
+        //static constexpr std::size_t kNBufferCopies   = 1;
+        //static constexpr std::size_t kShmemPad        = 2;
+        //static constexpr std::size_t kMinBlocksPerSM  = 10;
 
         // ================================================================
         // ▲▲▲ END TUNING PARAMETERS ▲▲▲
@@ -820,9 +826,9 @@ namespace cudahip {
         const ::dim3 kBlockDimension{ static_cast<uint32_t>( kWorkgroupSize ), 1, 1 };
 
         // Type aliases — change ComputeFloat to float for mixed precision
-        using ComputeFloat         = float;   // ← set to float for mixed precision mode
+        using ComputeFloat         = double;  // ← set to float for mixed precision mode
         using ComputePositionFloat = double;  // ← always double (position safety)
-        using ReductionFloat       = float;
+        using ReductionFloat       = double;  // ← set to float for mixed precision mode
 
 #if defined ( __HIP__ )
         auto KernelFunction = kernel::DepositCurrentDensity_3D_Order2<ComputeFloat, ComputePositionFloat, ReductionFloat, kWorkgroupSize, kNBufferCopies, kShmemPad, kMinBlocksPerSM>;
@@ -941,10 +947,16 @@ namespace cudahip {
         // ▼▼▼ TUNING PARAMETERS — ADJUST THESE ▼▼▼
         // ================================================================
 
+        // Legacy parameters
         static constexpr std::size_t kWorkgroupSize   = 128;
         static constexpr std::size_t kNBufferCopies   = 1;
-        static constexpr std::size_t kShmemPad        = 2;
+        static constexpr std::size_t kShmemPad        = 0;
         static constexpr std::size_t kMinBlocksPerSM  = 10;
+
+        //static constexpr std::size_t kWorkgroupSize   = 128;
+        //static constexpr std::size_t kNBufferCopies   = 1;
+        //static constexpr std::size_t kShmemPad        = 2;
+        //static constexpr std::size_t kMinBlocksPerSM  = 10;
 
         // ================================================================
         // ▲▲▲ END TUNING PARAMETERS ▲▲▲
@@ -953,9 +965,9 @@ namespace cudahip {
         const ::dim3 kBlockDimension{ static_cast<uint32_t>( kWorkgroupSize ), 1, 1 };
 
         // Type aliases
-        using ComputeFloat         = float;   // ← set to float for mixed precision mode
-        using ComputePositionFloat = double;  // ← always double (position safety)
-        using ReductionFloat       = float;
+        using ComputeFloat         = double;   // ← set to float for mixed precision mode
+        using ComputePositionFloat = double;   // ← always double (position safety)
+        using ReductionFloat       = double;   // ← set to float for mixed precision mode
 
 #if defined ( __HIP__ )
         auto KernelFunction = kernel::DepositDensity_3D_Order2<ComputeFloat, ComputePositionFloat, ReductionFloat, kWorkgroupSize, kNBufferCopies, kShmemPad, kMinBlocksPerSM>;
