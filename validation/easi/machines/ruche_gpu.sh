@@ -12,7 +12,6 @@
 # Load necessary modules
 #source /gpfs/users/prouveurc/env_smilei.sh
 source /gpfs/users/prouveurc/myhdf5_env_smilei.sh
-module load anaconda3/2022.10/gcc-11.2.0
-
+export LD_LIBRARY_PATH=/gpfs/softs/spack_1.0.2/opt/spack/linux-cascadelake/gettext-0.23.1-jjcwc7ug6uwmiippbgzkwmxe75xzny6u/lib/:$LD_LIBRARY_PATH
 # Run cuda code
-LD_PRELOAD=/gpfs/softs/spack/opt/spack/linux-centos7-haswell/gcc-4.8.5/gcc-11.2.0-mpv3i3uebzvnvz7wxn6ywysd5hftycj3/lib64/libstdc++.so.6.0.29 ./smilei input.py
+srun ./smilei input.py

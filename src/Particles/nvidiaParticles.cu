@@ -228,7 +228,6 @@ namespace detail {
         int CellStartingGlobalIndex_for_z_;
     };
 
-
     //! This functor assigns a cluster key to a_particle.
     //!
     template <typename ClusterType>
@@ -242,7 +241,11 @@ namespace detail {
 
         template <typename Tuple>
         __host__ __device__ void
-        operator()( Tuple& a_particle ) const
+        #if defined(__HIP__) || CUDA_VERSION < 13000 
+	operator()( Tuple& a_particle ) const
+        #else
+        operator()( Tuple&& a_particle ) const
+        #endif
         {
             thrust::get<0>( a_particle ) /* cluster key */ = cluster_type_.ClusterKey( a_particle );
         }
@@ -267,7 +270,11 @@ namespace detail {
 
         template <typename Tuple>
         __host__ __device__ void
+        #if defined(__HIP__) || CUDA_VERSION < 13000
         operator()( Tuple& a_particle ) const
+        #else
+        operator()( Tuple&& a_particle ) const
+        #endif
         {
             thrust::get<0>( a_particle ) /* cell key */ = cluster_type_.CellKey( a_particle );
         }
@@ -314,26 +321,50 @@ namespace detail {
                 break;
         }
     }
-    
+    //  thrust::unary_function deprecated for cuda >= 13.0  ; keeping it for hip for now 
+    #if defined(__HIP__) || CUDA_VERSION < 13000 
     template<int a, int b>
     struct affine_function : public thrust::unary_function<int,int> {
         __host__ __device__ int operator()( int x ) const {
             return a * x + b;
         }
     };
-    
+    #endif
+
+    /*template<int a, int b>
+    struct affine_function {
+    __host__ __device__ int operator()(int x) const {
+            return a * x + b;
+        }
+    };*/
+
+    /*struct index_transform_functor{
+    int N;
+    __host__ __device__ index_transform_functor(int n) : N(n) {}
+    __host__ __device__ int operator()(int i) const {
+            return i * N + N - 1;
+        }
+    };*/
+
     template<int N>
     void pickEveryN( int * input, int * output, int size ) {
         
         thrust::counting_iterator<int> first_cluster( 0 );
         thrust::counting_iterator<int> last_cluster( size / N );
-        const auto last_in_cluster = affine_function<N, N-1>();
+        #if defined(__HIP__) || CUDA_VERSION < 13000
+	const auto last_in_cluster = affine_function<N, N-1>();
+	//affine_function<N, N-1> last_in_cluster;
+	//index_transform_functor last_in_cluster(N);
+        #else // using a lambda instead of thrust::unary_function
+	auto last_in_cluster = [=] __host__ __device__ (int i) {
+            return  N * i + (N - 1);
+        };
+        #endif
         thrust::gather( thrust::device,
                         thrust::make_transform_iterator( first_cluster, last_in_cluster ),
                         thrust::make_transform_iterator( last_cluster , last_in_cluster ),
                         input,
                         output );
-        
     }
     
     inline void
