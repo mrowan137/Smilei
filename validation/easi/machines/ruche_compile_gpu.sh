@@ -10,7 +10,8 @@
 # Load necessary modules
 #source /gpfs/users/prouveurc/env_smilei.sh
 source /gpfs/users/prouveurc/myhdf5_env_smilei.sh
-module load anaconda3/2022.10/gcc-11.2.0
+#module load anaconda3/2022.10/gcc-11.2.0
 
 # Run cuda code
-make -j 40  machine="ruche_gpu2" config="gpu_nvidia noopenmp verbose" 
+module list
+make -j 40  machine="ruche_gpu2" config="gpu_nvidia verbose" 
