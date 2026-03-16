@@ -812,7 +812,7 @@ namespace cudahip {
         static constexpr std::size_t kWorkgroupSize   = 128;
         static constexpr std::size_t kNBufferCopies   = 1;
         static constexpr std::size_t kShmemPad        = 0;
-        static constexpr std::size_t kMinBlocksPerSM  = 10;
+        static constexpr std::size_t kMinBlocksPerSM  = 1;
 
         //static constexpr std::size_t kWorkgroupSize   = 128;
         //static constexpr std::size_t kNBufferCopies   = 1;
@@ -951,7 +951,7 @@ namespace cudahip {
         static constexpr std::size_t kWorkgroupSize   = 128;
         static constexpr std::size_t kNBufferCopies   = 1;
         static constexpr std::size_t kShmemPad        = 0;
-        static constexpr std::size_t kMinBlocksPerSM  = 10;
+        static constexpr std::size_t kMinBlocksPerSM  = 1;
 
         //static constexpr std::size_t kWorkgroupSize   = 128;
         //static constexpr std::size_t kNBufferCopies   = 1;

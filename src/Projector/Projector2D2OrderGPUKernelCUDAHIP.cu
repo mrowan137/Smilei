@@ -772,7 +772,7 @@ namespace cudahip2d {
         static constexpr std::size_t kWorkgroupSize   = 256;
         static constexpr std::size_t kNBufferCopies   = 1; // Very important to reduce contention, 1: Legacy. 8: is good
         static constexpr std::size_t kShmemPad        = 0; // 0: Legacy. 2: NCU give a local minimum
-        static constexpr std::size_t kMinBlocksPerSM  = 6; // NCU give a local minimum
+        static constexpr std::size_t kMinBlocksPerSM  = 1; // 1: Legacy. 6: NCU give a local minimum
 
         //static constexpr std::size_t kWorkgroupSize   = 256;
         //static constexpr std::size_t kNBufferCopies   = 8;
@@ -901,7 +901,7 @@ namespace cudahip2d {
         static constexpr std::size_t kWorkgroupSize   = 256;
         static constexpr std::size_t kNBufferCopies   = 1; // Very important to reduce contention, 1: Legacy. 8: is good
         static constexpr std::size_t kShmemPad        = 0; // 0: Legacy. 2: NCU give a local minimum
-        static constexpr std::size_t kMinBlocksPerSM  = 6; // NCU give a local minimum
+        static constexpr std::size_t kMinBlocksPerSM  = 1; // 1: Legacy. 6: NCU give a local minimum
 
         //static constexpr std::size_t kWorkgroupSize   = 256;
         //static constexpr std::size_t kNBufferCopies   = 8;
