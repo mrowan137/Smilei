@@ -17,7 +17,7 @@ MF_Solver2D_Bouchard::MF_Solver2D_Bouchard(Params &params)
     //double dt_ov_dx  = dt/dx;
     //double dt_ov_dy  = dt/dy;
     if( dx!=dy ) {
-        ERROR( "Bouchard solver requires the same cell-length in x and y directions" );
+        WARNING( "Bouchard solver works best with identical cell-lengths in all directions" );
     }
     if( dx_ov_dt!=2 ) {
         WARNING( "Bouchard solver requires dx/dt = 2 (Magical Timestep)" );

@@ -2,7 +2,7 @@
 # 					SIMULATION PARAMETERS FOR THE PIC-CODE SMILEI
 # ----------------------------------------------------------------------------------------
 
-# 25 Gbytes GPU Memory test
+# 15 Gbytes GPU Memory test
 
 from math import pi, cos, sin, sqrt
 from numpy import s_
@@ -80,7 +80,7 @@ Main(
 
 Species(
 	name                    = "eon",
-	particles_per_cell      = 6,
+	particles_per_cell      = 3,
 	position_initialization = "random",
 	momentum_initialization = "mj",
 	mass                    = 1.0,
@@ -97,7 +97,7 @@ Species(
 
 Species(
         name                    = "ion",
-        particles_per_cell      = 6,
+        particles_per_cell      = 3,
         position_initialization = "eon",
         momentum_initialization = "mj",
         mass                    = 1.0,

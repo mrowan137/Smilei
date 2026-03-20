@@ -65,22 +65,22 @@ Main(
     every_clean_particles_overhead = 200,
 )
 
-Vectorization(
-    mode = "on",
-    reconfigure_every = 20,
-    initial_mode = "on"
-)
-
-LoadBalancing(
-    initial_balance = True,
-    every = 250,
-    cell_load = 1.,
-    frozen_particle_load = 0.1
-)
+# Vectorization(
+#     mode = "on",
+#     reconfigure_every = 20,
+#     initial_mode = "on"
+# )
+# 
+# LoadBalancing(
+#     initial_balance = True,
+#     every = 250,
+#     cell_load = 1.,
+#     frozen_particle_load = 0.1
+# )
 
 Species(
 	name                    = "eon",
-	particles_per_cell      = 6,
+	particles_per_cell      = 3,
 	position_initialization = "random",
 	momentum_initialization = "mj",
 	mass                    = 1.0,
@@ -97,7 +97,7 @@ Species(
 
 Species(
         name                    = "ion",
-        particles_per_cell      = 6,
+        particles_per_cell      = 3,
         position_initialization = "eon",
         momentum_initialization = "mj",
         mass                    = 1.0,
