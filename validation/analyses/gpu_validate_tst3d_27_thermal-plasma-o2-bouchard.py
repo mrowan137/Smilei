@@ -1,7 +1,8 @@
 import os, re, numpy as np, h5py
 import happi
 
-S = happi.Open(["./restart*"], verbose=False)
+#S = happi.Open(["./restart*"], verbose=False)
+S = happi.Open(verbose=False)
 
 Validate("List of fields in Probe0", S.probeInfo(0)["fields"] )
 
