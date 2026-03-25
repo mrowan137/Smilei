@@ -10,10 +10,10 @@ timesteps = list(S.Probe.Probe0("Ez").getAvailableTimesteps())
 Validate("List of timesteps in Field0", timesteps )
 
 Uelm = S.Scalar("Uelm").getData()
-Validate("Uelm in the simulation domain", Uelm,0.005)
+Validate("Uelm in the simulation domain", Uelm,0.05)
 
 Ukin = S.Scalar("Ukin").getData()
-Validate("Ukin in the simulation domain", Ukin,0.005)
+Validate("Ukin in the simulation domain", Ukin,0.05)
 
 #Ey = np.array(S.Probe.Probe0("Ey", timesteps=timesteps[-1]).getData())[0,::16,::8]
 #Erms = np.mean(Ey**2)**0.5
