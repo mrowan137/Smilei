@@ -5,8 +5,6 @@
 # 15 Gbytes GPU Memory test
 
 from math import pi, cos, sin, sqrt
-from numpy import s_
-import numpy as np
 
 # Physical Params/ Units Library
 
@@ -26,7 +24,7 @@ t0 = l0                 # optical cycle
 k0 = 1.0
 w0 = 1.0
 
-Lsim = [64.*l0,16.*l0,16.*l0]     # length of the simulation
+Lsim = [32.*l0,8.*l0,8.*l0]     # length of the simulation
 resx = 8                                    # nb of cells in on laser wavelength
 resy,resz = resx,resx
 
@@ -41,7 +39,7 @@ if solver == 'Bouchard' :
   rest = resx*2
   custom_oversize = 4
 elif solver == 'Yee' :
-  rest = resx*np.sqrt(3)/0.96
+  rest = resx*sqrt(3)/0.96
   custom_oversize = 2
 
 Tsim = 1000*t0/rest              # duration of the simulation

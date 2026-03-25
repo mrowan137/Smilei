@@ -6,7 +6,7 @@ from math import pi, cos, sin, sqrt
 
 l0 = 2.0*pi                # laser wavelength
 t0 = l0                    # optical cycle
-Lsim = [64.*l0,64.*l0]     # length of the simulation
+Lsim = [32.*l0,32.*l0]     # length of the simulation
 resx,resy = 16,16                  # nb of cells in on laser wavelength
 
 solver = 'Bouchard'
@@ -15,7 +15,7 @@ if solver == 'Bouchard' :
   rest = resx*2
   custom_oversize = 4
 elif solver == 'Yee' :
-  rest = resx*np.sqrt(2)/0.96
+  rest = resx*sqrt(2)/0.96
   custom_oversize = 2
 
 Tsim = 1000.*t0/rest
@@ -26,7 +26,7 @@ Main(
     interpolation_order = 4,
     cell_length = [l0/resx,l0/resy],
     grid_length  = Lsim,
-    number_of_patches = [ 64, 64 ],
+    number_of_patches = [ 32, 32 ],
     timestep = t0/rest,
     simulation_time = Tsim,
     EM_boundary_conditions = [
