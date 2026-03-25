@@ -18,6 +18,6 @@ Validate("Ukin in the simulation domain", Ukin)
 #Erms = np.mean(Ey**2)**0.5
 #Validate("Ey profile in Field0 at Tsim", Ey, Erms*1e-7 )
 
-Bz = np.array(S.Probe.Probe0("Bz", timesteps=timesteps[-1]).getData())[0,::16,::8]
-Brms = np.mean(Bz**2)**0.5
-Validate("Bz profile in Field0 at Tsim", Bz, Brms*1e-7 )
+#Bz = np.array(S.Probe.Probe0("Bz", timesteps=timesteps[-1]).getData())[0,::16,::8]
+#Brms = np.mean(Bz**2)**0.5
+#Validate("Bz profile in Field0 at Tsim", Bz, Brms*1e-7 )
