@@ -26,7 +26,7 @@ Changes made in the repository (not released)
 * **Ported to GPU**:
 
   * Collisions (without ionization or nuclear reaction)
-  * 3D scheme for Bouchard Maxwell-Faraday solver (without particles)
+  * 2D and 3D scheme for Bouchard Maxwell-Faraday solver ensuring compatibility with 2D2Order, 2D4order and 3D3Order GPU Projector
 
 * **Features**:
 
@@ -41,6 +41,7 @@ Changes made in the repository (not released)
   * Tunnel ionization supports fullPPT model and 2 BSI models.
   * Prescribed fields with dynamic load balancing.
   * Custom oversize in AM geometry solvers.
+  * New 2D and 3D laser block and profile to help using spatial and temporal smoothed-beam
 
 * **Bug fixes**:
 
