@@ -210,6 +210,7 @@ namespace cudahip2d {
                                          int          j_domain_begin,
                                          int          nprimy,
                                          int          not_spectral_,
+                                         unsigned int oversize_,
                                          bool         cell_sorting )
         {
             const unsigned int workgroup_size = kWorkgroupSize;
@@ -230,9 +231,17 @@ namespace cudahip2d {
             static constexpr unsigned int kPaddedGCWidth    = kLogicalGCWidth + kShmemPad;
             static constexpr unsigned int kPaddedFieldSize  = kPaddedGCWidth * kPaddedGCWidth;
 
+            // NOTE: I tried having only one cache and reusing it. Doing that
+            // requires you to iterate multiple time over the particle which is
+            // possible but cost more bandwidth. The speedup was ~x0.92.
+
             __shared__ ReductionFloat Jx_scratch_space[kNBufferCopies][kPaddedFieldSize]; // Copie to reduce contention
             __shared__ ReductionFloat Jy_scratch_space[kNBufferCopies][kPaddedFieldSize];
             __shared__ ReductionFloat Jz_scratch_space[kNBufferCopies][kPaddedFieldSize];
+            //extern __shared__ ReductionFloat J_scratch_space[];
+            //ReductionFloat *Jx_scratch_space = J_scratch_space;
+            //ReductionFloat *Jy_scratch_space = (ReductionFloat*)&Jx_scratch_space[kFieldScratchSpaceSize];// ReductionFloat *Jy_scratch_space = &J_scratch_space[1*kFieldScratchSpaceSize];
+            //ReductionFloat *Jz_scratch_space = (ReductionFloat*)&Jy_scratch_space[kFieldScratchSpaceSize];// ReductionFloat *Jz_scratch_space = &J_scratch_space[2*kFieldScratchSpaceSize];
 
             const unsigned int buffer_copy_id = threadIdx.x % kNBufferCopies;
 
@@ -347,8 +356,16 @@ namespace cudahip2d {
                 const ComputeFloat cry_p         = charge_weight * dy_ov_dt;
                 const ComputeFloat crz_p         = charge_weight * static_cast<ComputeFloat>( 1.0 / 3.0 ) * static_cast<ComputeFloat>( device_particle_momentum_z[particle_index] ) * invgf;
 
-                const int ipo = iold[0 * particle_count] - 2 - global_x_scratch_space_coordinate_offset;
-                const int jpo = iold[1 * particle_count] - 2 - global_y_scratch_space_coordinate_offset;
+                // This is the particle position as grid index
+                // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
+                const int ipo = iold[0 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
+                const int jpo = iold[1 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 // ── Jx deposition ────────────────────────────────────
                 ComputeFloat tmpJx[5]{};
@@ -431,8 +448,8 @@ namespace cudahip2d {
                     }
                 }
 
-                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x;
-                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y;
+                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x + (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
+                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y + (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 const unsigned int global_memory_index = global_x * nprimy + global_y;
 
@@ -441,7 +458,6 @@ namespace cudahip2d {
                 atomic::GDS::AddNoReturn( &device_Jz[global_memory_index], static_cast<double>( Jz_scratch_space[0][field_index] ) );
             }
         } // end DepositCurrentDensity_2D_Order2
-
 
         // ====================================================================
         // Current + Density deposition kernel (Jx, Jy, Jz, rho)
@@ -482,6 +498,7 @@ namespace cudahip2d {
                                             int          j_domain_begin,
                                             int          nprimy,
                                             int          not_spectral_,
+                                            unsigned int oversize_,
                                             bool         cell_sorting )
         {
             const unsigned int workgroup_size = kWorkgroupSize;
@@ -502,10 +519,18 @@ namespace cudahip2d {
             static constexpr unsigned int kPaddedGCWidth    = kLogicalGCWidth + kShmemPad;
             static constexpr unsigned int kPaddedFieldSize  = kPaddedGCWidth * kPaddedGCWidth;
 
+            // NOTE: I tried having only one cache and reusing it. Doing that
+            // requires you to iterate multiple time over the particle which is
+            // possible but cost more bandwidth. The speedup was ~x0.92.
             __shared__ ReductionFloat Jx_scratch_space[kNBufferCopies][kPaddedFieldSize]; // Copie to reduce contention
             __shared__ ReductionFloat Jy_scratch_space[kNBufferCopies][kPaddedFieldSize];
             __shared__ ReductionFloat Jz_scratch_space[kNBufferCopies][kPaddedFieldSize];
             __shared__ ReductionFloat rho_scratch_space[kNBufferCopies][kPaddedFieldSize];
+            //extern __shared__ ReductionFloat Jrho_scratch_space[];
+            //ReductionFloat *Jx_scratch_space = Jrho_scratch_space;
+            //ReductionFloat *Jy_scratch_space = (ReductionFloat*)&Jx_scratch_space[kFieldScratchSpaceSize]; //ReductionFloat *Jy_scratch_space = Jrho_scratch_space[1*kFieldScratchSpaceSize];
+            //ReductionFloat *Jz_scratch_space = (ReductionFloat*)&Jy_scratch_space[kFieldScratchSpaceSize]; //ReductionFloat *Jz_scratch_space = Jrho_scratch_space[2*kFieldScratchSpaceSize];
+            //ReductionFloat *rho_scratch_space = (ReductionFloat*)&Jz_scratch_space[kFieldScratchSpaceSize]; //ReductionFloat *rho_scratch_space = Jrho_scratch_space[3*kFieldScratchSpaceSize];
 
             const unsigned int buffer_copy_id = threadIdx.x % kNBufferCopies;
 
@@ -612,8 +637,16 @@ namespace cudahip2d {
                 const ComputeFloat cry_p         = charge_weight * dy_ov_dt;
                 const ComputeFloat crz_p         = charge_weight * static_cast<ComputeFloat>( 1.0 / 3.0 ) * static_cast<ComputeFloat>( device_particle_momentum_z[particle_index] ) * invgf;
 
-                const int ipo = iold[0 * particle_count] - 2 - global_x_scratch_space_coordinate_offset;
-                const int jpo = iold[1 * particle_count] - 2 - global_y_scratch_space_coordinate_offset;
+                // This is the particle position as grid index
+                // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
+                const int ipo = iold[0 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */-
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
+                const int jpo = iold[1 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */-
+                                (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 // ── Jx deposition ────────────────────────────────────
                 ComputeFloat tmpJx[5]{};
@@ -713,8 +746,8 @@ namespace cudahip2d {
                     }
                 }
 
-                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x;
-                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y;
+                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x + (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
+                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y + (oversize_-2) /* Offset to get in-cluster coordinate with an oversize > 2*/ ;
 
                 const unsigned int global_memory_index = global_x * nprimy + global_y;
 
@@ -758,6 +791,7 @@ namespace cudahip2d {
                              int    j_domain_begin,
                              int    nprimy,
                              int    not_spectral_,
+                             unsigned int oversize_,
                              bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 2 /* 2D */ ) != -1 &&
@@ -817,6 +851,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting );
         checkHIPErrors( ::hipDeviceSynchronize() );
 #elif defined (  __NVCC__ )
@@ -847,6 +882,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );
@@ -887,6 +923,7 @@ namespace cudahip2d {
                                        int    j_domain_begin,
                                        int    nprimy,
                                        int    not_spectral_,
+                                       unsigned int oversize_,
                                        bool cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 2 /* 2D */ ) != -1 &&
@@ -947,6 +984,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting );
         checkHIPErrors( ::hipDeviceSynchronize() );
 #elif defined (  __NVCC__ )
@@ -978,6 +1016,7 @@ namespace cudahip2d {
                             i_domain_begin, j_domain_begin,
                             nprimy,
                             not_spectral_,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );

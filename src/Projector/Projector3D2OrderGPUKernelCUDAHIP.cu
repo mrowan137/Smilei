@@ -229,6 +229,7 @@ namespace cudahip {
                                          int          nprimy,
                                          int          nprimz,
                                          int          not_spectral,
+                                         unsigned int oversize_,
                                          bool         cell_sorting )
         {
             const unsigned int workgroup_size = kWorkgroupSize;
@@ -237,6 +238,7 @@ namespace cudahip {
             const unsigned int x_cluster_coordinate          = blockIdx.x;
             const unsigned int y_cluster_coordinate          = blockIdx.y;
             const unsigned int z_cluster_coordinate          = blockIdx.z;
+<<<<<<< HEAD
             const unsigned int workgroup_dedicated_bin_index = x_cluster_coordinate * gridDim.y * gridDim.z + y_cluster_coordinate * gridDim.z + z_cluster_coordinate;
             const unsigned int thread_index_offset           = threadIdx.x;
 
@@ -248,6 +250,13 @@ namespace cudahip {
             const int PaddedGCWidth = GPUClusterWithGCWidth + static_cast<int>( kShmemPad ); // To reduce Bank Conflict
 
             ComputeFloat one_third = 1. / 3.;
+
+            // NOTE: We gain from the particles not being sorted inside a
+            // cluster because it reduces the bank conflicts one gets when
+            // multiple threads access the same part of the shared memory. Such
+            // "conflicted" accesses are serialized !
+            // NOTE: We use a bit to much LDS. For Jx, the first row could be
+            // discarded, for Jy we could remove the first column.
 
             static constexpr unsigned int kLogicalGCWidth    = Params::getGPUClusterWithGhostCellWidth( 3, 2 );
             static constexpr unsigned int kPaddedGCWidth     = kLogicalGCWidth + kShmemPad;
@@ -322,10 +331,22 @@ namespace cudahip {
                 const ComputeFloat cry_p         = charge_weight * dy_ov_dt;
                 const ComputeFloat crz_p         = charge_weight * dz_ov_dt;
 
-                const int ipo = iold[0 * particle_count] - 2 - global_x_scratch_space_coordinate_offset;
-                const int jpo = iold[1 * particle_count] - 2 - global_y_scratch_space_coordinate_offset;
-                const int kpo = iold[2 * particle_count] - 2 - global_z_scratch_space_coordinate_offset;
-
+             
+                // This is the particle position as grid index
+                // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
+                const int ipo = iold[0 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
+                const int jpo = iold[1 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
+                const int kpo = iold[2 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_z_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
+ 
                 // ========================================================
                 // Jx deposition
                 // ========================================================
@@ -559,6 +580,7 @@ namespace cudahip {
                 const unsigned int local_y = ( field_index % ( PaddedGCWidth * PaddedGCWidth ) ) / PaddedGCWidth;
                 const unsigned int local_z = field_index % PaddedGCWidth;
 
+<<<<<<< HEAD
                 if( kShmemPad > 0 ) {
                     if( local_x >= static_cast<unsigned int>(GPUClusterWithGCWidth) ||
                         local_y >= static_cast<unsigned int>(GPUClusterWithGCWidth) ||
@@ -567,9 +589,9 @@ namespace cudahip {
                     }
                 }
 
-                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x ;
-                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y ;
-                const unsigned int global_z = global_z_scratch_space_coordinate_offset + local_z ;
+                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x +(oversize_-2);
+                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y +(oversize_-2);
+                const unsigned int global_z = global_z_scratch_space_coordinate_offset + local_z +(oversize_-2);
 
                 const unsigned int global_memory_index = ( global_x * nprimy + global_y ) * nprimz + global_z;
 
@@ -621,6 +643,7 @@ namespace cudahip {
                                             int          nprimy,
                                             int          nprimz,
                                             int          not_spectral,
+                                            unsigned int oversize_,
                                             bool         cell_sorting )
         {
             const unsigned int workgroup_size = kWorkgroupSize;
@@ -696,9 +719,24 @@ namespace cudahip {
                                                    static_cast<ComputeFloat>( device_particle_charge[particle_index] ) *
                                                    static_cast<ComputeFloat>( device_particle_weight[particle_index] );
 
-                const int ipo = iold[0 * particle_count] - 2 - global_x_scratch_space_coordinate_offset;
-                const int jpo = iold[1 * particle_count] - 2 - global_y_scratch_space_coordinate_offset;
-                const int kpo = iold[2 * particle_count] - 2 - global_z_scratch_space_coordinate_offset;
+                // const ComputeFloat crx_p         = charge_weight * dx_ov_dt;
+                // const ComputeFloat cry_p         = charge_weight * dy_ov_dt;
+                // const ComputeFloat crz_p         = charge_weight * dz_ov_dt;
+
+                // This is the particle position as grid index
+                // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
+                const int ipo = iold[0 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
+                const int jpo = iold[1 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
+                const int kpo = iold[2 * particle_count] -
+                                2 /* Offset so we dont uses negative numbers in the loop */ -
+                                global_z_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
 
                 // Rho deposition
                 for( unsigned int i = 0; i < 5; ++i ) {
@@ -746,9 +784,9 @@ namespace cudahip {
                     }
                 }
 
-                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x;
-                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y;
-                const unsigned int global_z = global_z_scratch_space_coordinate_offset + local_z;
+                const unsigned int global_x = global_x_scratch_space_coordinate_offset + local_x + (oversize_-2) ;
+                const unsigned int global_y = global_y_scratch_space_coordinate_offset + local_y + (oversize_-2) ;
+                const unsigned int global_z = global_z_scratch_space_coordinate_offset + local_z + (oversize_-2) ;
 
                 const unsigned int global_memory_index = ( global_x * nprimy + global_y ) * nprimz + global_z;
 
@@ -797,6 +835,7 @@ namespace cudahip {
                                int    nprimy,
                                int    nprimz,
                                int    not_spectral,
+                               unsigned int oversize_,
                                bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 3 /* 3D */ ) != -1 &&
@@ -860,6 +899,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting 
                         );
         checkHIPErrors( ::hipDeviceSynchronize() );
@@ -895,6 +935,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );
@@ -936,6 +977,7 @@ namespace cudahip {
                                 int    nprimy,
                                 int    nprimz,
                                 int    not_spectral,
+                                unsigned int oversize_,
                                 bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 3 /* 3D */ ) != -1 &&
@@ -997,6 +1039,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting );
 
         checkHIPErrors( ::hipDeviceSynchronize() );
@@ -1029,6 +1072,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );

@@ -1901,7 +1901,8 @@ int Params::getGPUClusterWidth() const
 int Params::getGPUClusterGhostCellBorderWidth() const
 {
     //It is assumed all oversize are equal
-    return 2*oversize[0]+1;
+    //return 2*oversize[0]+1;
+    return getGPUClusterGhostCellBorderWidth( interpolation_order );
 }
 
 int Params::getGPUClusterCellVolume() const
