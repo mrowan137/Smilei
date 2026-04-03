@@ -163,6 +163,7 @@ namespace cudahip {
                                          int          nprimy,
                                          int          nprimz,
                                          int          not_spectral,
+                                         unsigned int oversize_,
                                          bool         cell_sorting )
         {
             // Potential future work for optimization: Break the kernel into smaller
@@ -176,6 +177,7 @@ namespace cudahip {
             const unsigned int y_cluster_coordinate          = blockIdx.y;
             const unsigned int z_cluster_coordinate          = blockIdx.z;
             const unsigned int workgroup_dedicated_bin_index = x_cluster_coordinate * gridDim.y * gridDim.z + y_cluster_coordinate * gridDim.z + z_cluster_coordinate; // The indexing order is: x * ywidth * zwidth + y * zwidth + z
+            const unsigned int thread_index_offset           = threadIdx.x;
 
 //#if defined (  __NVCC__ )
 //// For the moment on NVIDIA GPU we don't use the Params:: static constexpr methods such as Params::getGPUClusterWidth
@@ -219,7 +221,7 @@ namespace cudahip {
 
             // Init the shared memory
 
-            for( unsigned int field_index = threadIdx.x;
+            for( unsigned int field_index = thread_index_offset;
                  field_index < kFieldScratchSpaceSize;
                  field_index += workgroup_size ) {
                 Jx_scratch_space[field_index] = static_cast<ReductionFloat>( 0.0 );
@@ -291,17 +293,20 @@ namespace cudahip {
                 // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
                 const int ipo = iold[0 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
                 const int jpo = iold[1 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
                 const int kpo = iold[2 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_z_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
-                //if (particle_index==first_particle + threadIdx.x) printf("ipo : %d\n",ipo); 
-                // Jx
-                //j=0
-                //k=0
+                                global_z_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
+                ////if (particle_index==first_particle + thread_index_offset) printf("ipo : %d\n",ipo); 
+                //// Jx
+                ////j=0
+                ////k=0
                 {
                     ComputeFloat tmp = crx_p * Sy1[0] * one_third * Sz1[0];
                     ComputeFloat tmp_reduction{};
@@ -492,7 +497,7 @@ namespace cudahip {
 
             __syncthreads();
 
-            for( unsigned int field_index = threadIdx.x;
+            for( unsigned int field_index = thread_index_offset;
                  field_index < kFieldScratchSpaceSize;
                  field_index += workgroup_size ) {
 
@@ -501,9 +506,9 @@ namespace cudahip {
                 const unsigned int local_y_scratch_space_coordinate = ( field_index % ( GPUClusterWithGCWidth * GPUClusterWithGCWidth ) ) / GPUClusterWithGCWidth;
                 const unsigned int local_z_scratch_space_coordinate = field_index % GPUClusterWithGCWidth;
 
-                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate;
-                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate;
-                const unsigned int global_z_scratch_space_coordinate = global_z_scratch_space_coordinate_offset + local_z_scratch_space_coordinate;
+                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate+(oversize_-2);
+                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate+(oversize_-2);
+                const unsigned int global_z_scratch_space_coordinate = global_z_scratch_space_coordinate_offset + local_z_scratch_space_coordinate+(oversize_-2);
 
                 // The indexing order is: x * ywidth * zwidth + y * zwidth + z
                 const unsigned int global_memory_index = ( global_x_scratch_space_coordinate * nprimy + global_y_scratch_space_coordinate ) * nprimz + global_z_scratch_space_coordinate;
@@ -546,6 +551,7 @@ namespace cudahip {
                                             int          nprimy,
                                             int          nprimz,
                                             int          not_spectral,
+                                            unsigned int oversize_,
                                             bool         cell_sorting )
         {
             // TODO(Etienne M): refactor this function. Break it into smaller
@@ -646,15 +652,27 @@ namespace cudahip {
                 // This minus 2 come from the order 2 scheme, based on a 5 points stencil from -2 to +2.
                 const int ipo = iold[0 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_x_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
                 const int jpo = iold[1 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_y_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
                 const int kpo = iold[2 * particle_count] -
                                 2 /* Offset so we dont uses negative numbers in the loop */ -
-                                global_z_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */;
+                                global_z_scratch_space_coordinate_offset /* Offset to get cluster relative coordinates */ -
+                                (oversize_-2);
 
-                // Rho
+                // In the loop : loc >= 9*9*9 = 729 SEGFAULT
+                // Il faut trouver un moyen de tenir en compte de l'offset oversize comme en 2D, sans sortir du tableau
+                // UPDATE : Dans la version actuelle ipo,jpo,kpo varie de 0 à 5 quelque soit l'oversize. Alors que dans la version develop ipo,jpo,kpo varie de 0 a 4.
+                // Dans le cas ou ipo,jpo,kpo<5 alors valeur max = (4+4)*9*9+(4+4)*9+(4+4)=728 bien compatible avec la taille de tableau 729.
+                // Dans le cas ou ipo,jpo,kpo<6 alors valeur max = (4+5)*9*9+(4+5)*9+(4+5)=819 SEGFAULT avec la taille de tableau 729.
+                // Solution GPUClusterWithGCWidth (en particulier la taille du Cluster) doit etre augmente de 1 pour etre coherent avec ipo_max=5 : (4+2*2+1) -> (5+2*2+1)
+                // kScratchSpace= 10*10*10 et loc_max = (4+5)*10*10+(4+5)*10+(4+5)=999.
+                // Il faut comprendre pourquoi ipo,jpo,kpo varie jusqu'a 5 pour diminuer de nouveau ClusterWidth a 4 et ipo_max=4
+
+                //// Rho
                 //#pragma unroll(5)
                 for( unsigned int i = 0; i < 5; ++i ) {
                     //#pragma unroll(5)
@@ -684,9 +702,9 @@ namespace cudahip {
                 const unsigned int local_y_scratch_space_coordinate = ( field_index % ( GPUClusterWithGCWidth * GPUClusterWithGCWidth ) ) / GPUClusterWithGCWidth;
                 const unsigned int local_z_scratch_space_coordinate = field_index % GPUClusterWithGCWidth;
 
-                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate;
-                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate;
-                const unsigned int global_z_scratch_space_coordinate = global_z_scratch_space_coordinate_offset + local_z_scratch_space_coordinate;
+                const unsigned int global_x_scratch_space_coordinate = global_x_scratch_space_coordinate_offset + local_x_scratch_space_coordinate+(oversize_-2);
+                const unsigned int global_y_scratch_space_coordinate = global_y_scratch_space_coordinate_offset + local_y_scratch_space_coordinate+(oversize_-2);
+                const unsigned int global_z_scratch_space_coordinate = global_z_scratch_space_coordinate_offset + local_z_scratch_space_coordinate+(oversize_-2);
 
                 // The indexing order is: x * ywidth * zwidth + y * zwidth + z
                 const unsigned int global_memory_index = ( global_x_scratch_space_coordinate * nprimy + global_y_scratch_space_coordinate ) * nprimz + global_z_scratch_space_coordinate;
@@ -734,6 +752,7 @@ namespace cudahip {
                                int    nprimy,
                                int    nprimz,
                                int    not_spectral,
+                               unsigned int oversize_,
                                bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 3 /* 2D */ ) != -1 &&
@@ -785,6 +804,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting 
                         );
 
@@ -818,6 +838,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );
@@ -856,6 +877,7 @@ namespace cudahip {
                                 int    nprimy,
                                 int    nprimz,
                                 int    not_spectral,
+                                unsigned int oversize_,
                                 bool   cell_sorting )
     {
         SMILEI_ASSERT( Params::getGPUClusterWidth( 3 /* 2D */ ) != -1 &&
@@ -907,6 +929,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting );
 
         checkHIPErrors( ::hipDeviceSynchronize() );
@@ -936,6 +959,7 @@ namespace cudahip {
                             i_domain_begin, j_domain_begin, k_domain_begin,
                             nprimy, nprimz,
                             not_spectral,
+                            oversize_,
                             cell_sorting
                        );
         checkHIPErrors( ::cudaDeviceSynchronize() );
