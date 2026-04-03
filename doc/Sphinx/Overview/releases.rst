@@ -61,6 +61,7 @@ Changes made in the repository (not released)
   * Fix PrescribedFields with MLMD.
   * Field synchronization between patches is now done after application of boundary conditions and all points are systematically exchanged.
   * Fixed segmentation fault when using Multiphoton Breit-Wheeler in ``AMcylindrical`` geometry.
+  * Laser envelope model: fixed risk of deadlock for laser injection from ``xmin`` when many OpenMP threads are used.
 
 * **Experimental**
 
