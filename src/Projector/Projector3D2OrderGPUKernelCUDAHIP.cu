@@ -238,7 +238,7 @@ namespace cudahip {
             const unsigned int x_cluster_coordinate          = blockIdx.x;
             const unsigned int y_cluster_coordinate          = blockIdx.y;
             const unsigned int z_cluster_coordinate          = blockIdx.z;
-<<<<<<< HEAD
+
             const unsigned int workgroup_dedicated_bin_index = x_cluster_coordinate * gridDim.y * gridDim.z + y_cluster_coordinate * gridDim.z + z_cluster_coordinate;
             const unsigned int thread_index_offset           = threadIdx.x;
 
@@ -580,7 +580,6 @@ namespace cudahip {
                 const unsigned int local_y = ( field_index % ( PaddedGCWidth * PaddedGCWidth ) ) / PaddedGCWidth;
                 const unsigned int local_z = field_index % PaddedGCWidth;
 
-<<<<<<< HEAD
                 if( kShmemPad > 0 ) {
                     if( local_x >= static_cast<unsigned int>(GPUClusterWithGCWidth) ||
                         local_y >= static_cast<unsigned int>(GPUClusterWithGCWidth) ||
