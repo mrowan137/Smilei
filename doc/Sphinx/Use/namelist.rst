@@ -1689,7 +1689,7 @@ There are several syntaxes to introduce a laser in :program:`Smilei`:
 
 For two-dimensional simulations, you may use the specific laser creator for define smoothed laser beam::
        
-    LaserSmoothing3D(
+    LaserSmoothing2D(
         box_side                       = "xmin",
         a0                             = 1.,
         omega                          = 1.,
@@ -1858,14 +1858,14 @@ In order to take into account the temporal behaviour of the field and the bandwi
    :type: bool
    :default: False
  
-   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode when set to ``True``
+   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode accordingly to smoothing method ``"Stardriver"`` or ``"ISI"``. When set to ``"Stardriver"`` each mode have it's own independant Random Phase Plate. If ``"ISI"`` it apply a linear phase shift along for each mode on one unique and shared Random Phase Plate. 
       
   .. py:data:: rpp_seed_per_mode
       
     :type: a list of *int*
     :default: [42]
  
-    For ``"Broadband Laser"``, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
+    For ``"Broadband Laser"``, if ``"Stardriver"`` is set, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
       
   .. py:data:: omega_m_trans
 
@@ -2132,14 +2132,14 @@ In order to take into account the temporal behaviour of the field and the bandwi
    :type: bool
    :default: False
  
-   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode when set to ``True``
+   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode accordingly to smoothing method ``"Stardriver"`` or ``"ISI"``. When set to ``"Stardriver"`` each mode have it's own independant Random Phase Plate. If ``"ISI"`` it apply a linear phase shift along for each mode on one unique and shared Random Phase Plate.
       
   .. py:data:: rpp_seed_per_mode
  
     :type: a list of *int*
     :default: [42]
  
-    For ``"Broadband Laser"``, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
+    For ``"Broadband Laser"``, when ``"Stardriver"`` is set, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
       
   .. py:data:: omega_m_trans
 

@@ -603,7 +603,7 @@ def transform(x,y,xf,yf,L,ang) :
 
 def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_angle=0.,polarization_phi=0.,ellipticity=0.,phase_zero=0.,
                Lf=3.00e6,fnumber=8.00,
-               N=6,rpp_random_seed=10.,
+               N=6,rpp_random_seed=10,
                temporal_smoothing=None,temporal_smoothing_random_seed=42,
                omega_m=0.,modulation_depth=0,rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,chirp_profile=tconstant(),
@@ -620,7 +620,7 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     temporal_smoothing     : None/Broadband/TSSD/LSSD
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/True : Change the RPP for each mode
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Same RPP for each mode / Delay pulse / Change the RPP for each mode
     rpp_seed_per_mode      : Seed for RRP
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
@@ -765,8 +765,9 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     fct_phase_Bz = []
 
     if temporal_smoothing=='Broadband':
+        phik_base = phik.copy()
         for mode in modes_broadband :
-            if rpp_per_mode==True:
+            if rpp_per_mode=='Stardriver':
                 if len(rpp_seed_per_mode)!=len(modes_broadband):
                     raise Exception("len(rpp_seed_per_mode): "+str(len(rpp_seed_per_mode))+". len(modes_broadband): "+str(len(modes_broadband))+". Length of rpp_seed_per_mode have to be equal to 2 x modulation_depth + 1 ")
                 phik = np.zeros(N)
@@ -774,6 +775,16 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                 phikinit = np.random.rand(N)
                 for i in range(0,N):
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
+            elif rpp_per_mode=='ISI':
+                phik_mode = phik_base.copy()
+                delta_t_echelon = 1.5 * 2*pi / (2 * m_broadband * omega_m)
+                omega_k = omega * (1. + mode * omega_m / omega)
+                for i in range(0,N):
+                    phik_mode[i] += omega_k * i * delta_t_echelon
+                phik_mode = phik_mode % (2*pi)
+                phik = phik_mode
+            else :
+                phik = 1*phik
             fct_amp_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_amp_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_phase_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
@@ -889,7 +900,7 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
     temporal_smoothing     : None/Broadband/TSSD/LSSD
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/True : Change the RPP for each mode
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Change the RPP for each mode
     rpp_seed_per_mode      : Seed for RRP
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
@@ -1020,8 +1031,9 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
     fct_phase_Bz = []
 
     if temporal_smoothing=='Broadband':
+        phik_base = phik.copy()
         for mode in modes_broadband :
-            if rpp_per_mode==True:
+            if rpp_per_mode=='Stardriver':
                 if len(rpp_seed_per_mode)!=len(modes_broadband):
                     raise Exception("len(rpp_seed_per_mode): "+str(len(rpp_seed_per_mode))+". len(modes_broadband): "+str(len(modes_broadband))+". Length of rpp_seed_per_mode have to be equal to 2 x modulation_depth + 1 ")
                 phik = np.zeros(N)
@@ -1029,6 +1041,16 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
                 phikinit = np.random.rand(N)
                 for i in range(0,N):
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
+            elif rpp_per_mode=='ISI':
+                phik_mode = phik_base.copy()
+                delta_t_echelon = 1.5 * 2*pi / (2 * m_broadband * omega_m)
+                omega_k = omega * (1. + mode * omega_m / omega)
+                for i in range(0,N):
+                    phik_mode[i] += omega_k * i * delta_t_echelon
+                phik_mode = phik_mode % (2*pi)
+                phik = phik_mode
+            else :
+                phik = 1*phik
             fct_amp_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_amp_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_phase_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
@@ -1277,7 +1299,7 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     temporal_smoothing     : None/'Broadband'/'TSSD'/'LSSD'
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/True : Change the RPP for each mode
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Change the RPP for each mode
     rpp_seed_per_mode      : Seed for RRP
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
@@ -1457,8 +1479,9 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     fct_phase_Bz = []
 
     if temporal_smoothing=='Broadband':
+        phik_base = phik.copy()
         for mode in modes_broadband :
-            if rpp_per_mode==True:
+            if rpp_per_mode=='Stardriver':
                 if len(rpp_seed_per_mode)!=len(modes_broadband):
                     raise Exception("len(rpp_seed_per_mode): "+str(len(rpp_seed_per_mode))+". len(modes_broadband): "+str(len(modes_broadband))+". Length of rpp_seed_per_mode have to be equal to 2 x modulation_depth + 1 ")
                 phik = np.zeros(Ntot)
@@ -1466,6 +1489,18 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                 phikinit = np.random.rand(Ntot)
                 for i in range(0,Ntot):
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
+            elif rpp_per_mode=='ISI':
+                phik_mode = phik_base.copy()
+                delta_t_y = 1.5 * 2*pi / (2 * m_broadband * omega_m)
+                delta_t_z = 1.7 * 2*pi / (2 * m_broadband * omega_m)  # different de y pour avoir 2 echelons 1D separable. Modes indépendants est Ny + Nz et pas Ny x Nz car pas escalier 2D.
+                omega_k = omega * (1. + mode * omega_m / omega)
+                for ny in range(0, Ny):
+                    for nz in range(0, Nz):
+                        phik_mode[ny*Nz+nz] += omega_k * (ny * delta_t_y + nz * delta_t_z)
+                phik_mode = phik_mode % (2*pi)
+                phik = phik_mode
+            else :
+                phik = 1*phik
             fct_amp_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_amp_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_phase_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
@@ -1589,7 +1624,7 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
     temporal_smoothing     : None/'Broadband'/'TSSD'/'LSSD'
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/True : Change the RPP for each mode
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Change the RPP for each mode
     rpp_seed_per_mode      : Seed for RRP
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
@@ -1749,8 +1784,9 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
     fct_phase_Bz = []
 
     if temporal_smoothing=='Broadband':
+        phik_base = phik.copy()
         for mode in modes_broadband :
-            if rpp_per_mode==True:
+            if rpp_per_mode=='Stardriver':
                 if len(rpp_seed_per_mode)!=len(modes_broadband):
                     raise Exception("len(rpp_seed_per_mode): "+str(len(rpp_seed_per_mode))+". len(modes_broadband): "+str(len(modes_broadband))+". Length of rpp_seed_per_mode have to be equal to 2 x modulation_depth + 1 ")
                 phik = np.zeros(Ntot)
@@ -1758,6 +1794,18 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
                 phikinit = np.random.rand(Ntot)
                 for i in range(0,Ntot):
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
+            elif rpp_per_mode=='ISI':
+                phik_mode = phik_base.copy()
+                delta_t_y = 1.5 * 2*pi / (2 * m_broadband * omega_m)
+                delta_t_z = 1.7 * 2*pi / (2 * m_broadband * omega_m)  # different de y pour avoir 2 echelons 1D separable. Modes indépendants est Ny + Nz et pas Ny x Nz car pas escalier 2D.
+                omega_k = omega * (1. + mode * omega_m / omega)
+                for ny in range(0, Ny):
+                    for nz in range(0, Nz):
+                        phik_mode[ny*Nz+nz] += omega_k * (ny * delta_t_y + nz * delta_t_z)
+                phik_mode = phik_mode % (2*pi)
+                phik = phik_mode
+            else :
+                phik = 1*phik
             fct_amp_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_amp_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
             fct_phase_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
