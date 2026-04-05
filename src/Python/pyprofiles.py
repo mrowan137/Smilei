@@ -603,9 +603,11 @@ def transform(x,y,xf,yf,L,ang) :
 
 def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_angle=0.,polarization_phi=0.,ellipticity=0.,phase_zero=0.,
                Lf=3.00e6,fnumber=8.00,
-               N=6,rpp_random_seed=10,
-               temporal_smoothing=None,temporal_smoothing_random_seed=42,
-               omega_m=0.,modulation_depth=0,rpp_per_mode=False,rpp_seed_per_mode=[42],
+               N=6,rpp_random_seed=42,
+               temporal_smoothing=None,
+               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
+               rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,chirp_profile=tconstant(),
                omega_m_longi=0.,modulation_depth_longi=0,mode2generate_longi=None,
                space_envelope=lambda y:1.,time_envelope=tconstant()):
@@ -617,11 +619,13 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     fnumber                : F-number
     N                      : Number of phase plate element
     rpp_random_seed        : Seed in order to have a Random Phase Plate (None is = no random, all element have zero phase-shift),
-    temporal_smoothing     : None/Broadband/TSSD/LSSD
+    temporal_smoothing     : None/'Broadband'/'TSSD'/'LSSD'
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/'Stardriver'/'ISI' : Same RPP for each mode / Delay pulse / Change the RPP for each mode
-    rpp_seed_per_mode      : Seed for RRP
+    frequency_comb         : False/True mode are equally spaced (modulation time) or not (no modulation time)
+    mode_locking           : False/True mode have randomly chosen phase or not
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Same RPP for each mode / Change the RPP for each mode / Phase delay per mode
+    rpp_seed_per_mode      : Seed for RRP or [parameter] for ISI echelon
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
     modulation_depth_trans : depth 'm' of modulation and frequency bandwith = 2m for transverse SSD
@@ -658,7 +662,7 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
         modulation_depth_trans=0
 
     if len(Main)==0:
-        raise Exception("LaserRPP2D profile has been defined before `Main()`") 
+        raise Exception("LaserSmoothing2D profile has been defined before `Main()`") 
         
     k0 = omega
     waist = fnumber*N*(2.00*pi/omega)
@@ -694,13 +698,18 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     modes_broadband = range(-m_broadband,m_broadband+1,1)
     
     if temporal_smoothing=='Broadband':
-        if temporal_smoothing_random_seed != None :
-            np.random.seed(temporal_smoothing_random_seed)
-            phase_w = 2*pi*np.random.rand(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        if frequency_comb :
+            mode_offsets = np.zeros(len(modes_broadband))
         else :
-            phase_w = np.zeros(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+            np.random.seed(temporal_freq_random_seed)
+            mode_offsets = np.random.uniform(-0.5,0.5,len(modes_broadband))
+        if mode_locking :
+            phase_w = np.zeros(len(modes_broadband)) 
+        else :
+            np.random.seed(temporal_phi_random_seed)
+            phase_w = 2*pi*np.random.rand(len(modes_broadband))
+        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+            
 
     def ERPP(y,imode,imode_t,imode_l,phik) :
         '''
@@ -759,6 +768,16 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     def ERPP_phaseBy(y,imode_,imode_t_,imode_l_,phik_) :
         return ERPP(y,imode=imode_,imode_t=imode_t_,imode_l=imode_l_,phik=phik_)[1]-phase_zero+delay_phase[1]
 
+    # Encapsulated function to avoid warning
+    def _mk_amp_By(im, it, il, pk):
+        return lambda y: ERPP_ampBy(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+    def _mk_amp_Bz(im, it, il, pk):
+        return lambda y: ERPP_ampBz(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+    def _mk_phase_By(im, it, il, pk):
+        return lambda y: ERPP_phaseBy(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+    def _mk_phase_Bz(im, it, il, pk):
+        return lambda y: ERPP_phaseBz(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+
     fct_amp_By = []
     fct_amp_Bz = []
     fct_phase_By = []
@@ -777,18 +796,22 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
             elif rpp_per_mode=='ISI':
                 phik_mode = phik_base.copy()
-                delta_t_echelon = 1.5 * 2*pi / (2 * m_broadband * omega_m)
-                omega_k = omega * (1. + mode * omega_m / omega)
+                delta_t_echelon = rpp_seed_per_mode[0] * 2*pi / (2 * m_broadband * omega_m)
+                omega_k = omega * (1. + (mode+mode_offsets[mode+m_broadband]) * omega_m / omega)
                 for i in range(0,N):
                     phik_mode[i] += omega_k * i * delta_t_echelon
                 phik_mode = phik_mode % (2*pi)
                 phik = phik_mode
             else :
                 phik = 1*phik
-            fct_amp_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_amp_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            fct_amp_By.append(_mk_amp_By(mode, 0, 0, phik))
+            fct_amp_Bz.append(_mk_amp_Bz(mode, 0, 0, phik))
+            fct_phase_By.append(_mk_phase_By(mode, 0, 0, phik))
+            fct_phase_Bz.append(_mk_phase_Bz(mode, 0, 0, phik))
         fct_amp_By = np.array(fct_amp_By)
         fct_amp_Bz = np.array(fct_amp_Bz)
         fct_phase_By = np.array(fct_phase_By)
@@ -796,10 +819,14 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     else :
         for mode_t in modes_trans :
             for mode_l in modes_longi :
-                fct_amp_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                fct_amp_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                fct_phase_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                fct_phase_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_amp_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_amp_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_phase_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_phase_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                fct_amp_By.append(_mk_amp_By(0, mode_t, mode_l, phik))
+                fct_amp_Bz.append(_mk_amp_Bz(0, mode_t, mode_l, phik))
+                fct_phase_By.append(_mk_phase_By(0, mode_t, mode_l, phik))
+                fct_phase_Bz.append(_mk_phase_Bz(0, mode_t, mode_l, phik))
         fct_amp_By = np.reshape(np.array(fct_amp_By),(2*m_trans+1,2*m_longi+1))
         fct_amp_Bz = np.reshape(np.array(fct_amp_Bz),(2*m_trans+1,2*m_longi+1))
         fct_phase_By = np.reshape(np.array(fct_phase_By),(2*m_trans+1,2*m_longi+1))
@@ -810,7 +837,7 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
             im = int(mode+m_broadband)
             Laser(
                 box_side       = box_side,
-                omega          = omega*(1.+mode*omega_m/omega),
+                omega          = omega*(1.+(mode+mode_offsets[im])*omega_m/omega),
                 # omega          = omega,
                 # chirp_profile  = tpolynomial(t0=0.0, order0=(1.+mode*omega_m/omega))
                 time_envelope  = time_envelope,
@@ -883,9 +910,11 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
 
 def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_angle=0.,polarization_phi=0.,ellipticity=0.,phase_zero=0.,
                Lf=3.00e6,fnumber=8.00,
-               N=6,rpp_random_seed=10.,
-               temporal_smoothing=None,temporal_smoothing_random_seed=42,
-               omega_m=0.,modulation_depth=0,rpp_per_mode=False,rpp_seed_per_mode=[42],
+               N=6,rpp_random_seed=42,
+               temporal_smoothing=None,
+               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
+               rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,chirp_profile=tconstant(),
                omega_m_longi=0.,modulation_depth_longi=0,mode2generate_longi=None,
                space_envelope=lambda y:1.,time_envelope=tconstant()):
@@ -897,11 +926,13 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
     fnumber                : F-number
     N                      : Number of phase plate element
     rpp_random_seed        : Seed in order to have a Random Phase Plate (None is = no random, all element have zero phase-shift),
-    temporal_smoothing     : None/Broadband/TSSD/LSSD
+    temporal_smoothing     : None/'Broadband'/'TSSD'/'LSSD'
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/'Stardriver'/'ISI' : Change the RPP for each mode
-    rpp_seed_per_mode      : Seed for RRP
+    frequency_comb         : False/True mode are equally spaced (modulation time) or not (no modulation time)
+    mode_locking           : False/True mode have randomly chosen phase or not
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Same RPP for each mode / Change the RPP for each mode / Phase delay per mode
+    rpp_seed_per_mode      : Seed for RRP or [parameter] for ISI echelon
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
     modulation_depth_trans : depth 'm' of modulation and frequency bandwith = 2m for transverse SSD
@@ -938,7 +969,7 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
         modulation_depth_trans=0
 
     if len(Main)==0:
-        raise Exception("LaserRPP2D profile has been defined before `Main()`") 
+        raise Exception("LaserSmoothingPeriodic2D profile has been defined before `Main()`") 
         
     k0 = omega
     waist = fnumber*N*(2.00*pi/omega)
@@ -974,13 +1005,17 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
     modes_broadband = range(-m_broadband,m_broadband+1,1)
     
     if temporal_smoothing=='Broadband':
-        if temporal_smoothing_random_seed != None :
-            np.random.seed(temporal_smoothing_random_seed)
-            phase_w = 2*pi*np.random.rand(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        if frequency_comb :
+            mode_offsets = np.zeros(len(modes_broadband))
         else :
-            phase_w = np.zeros(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+            np.random.seed(temporal_freq_random_seed)
+            mode_offsets = np.random.uniform(-0.5,0.5,len(modes_broadband))
+        if mode_locking :
+            phase_w = np.zeros(len(modes_broadband)) 
+        else :
+            np.random.seed(temporal_phi_random_seed)
+            phase_w = 2*pi*np.random.rand(len(modes_broadband))
+        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
 
     def ERPP(y,imode,imode_t,imode_l,phik) :
         '''
@@ -1025,6 +1060,16 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
     def ERPP_phaseBy(y,imode_,imode_t_,imode_l_,phik_) :
         return ERPP(y,imode=imode_,imode_t=imode_t_,imode_l=imode_l_,phik=phik_)[1]-phase_zero+delay_phase[1]
 
+    # Encapsulated function to avoid warning
+    def _mk_amp_By(im, it, il, pk):
+        return lambda y: ERPP_ampBy(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+    def _mk_amp_Bz(im, it, il, pk):
+        return lambda y: ERPP_ampBz(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+    def _mk_phase_By(im, it, il, pk):
+        return lambda y: ERPP_phaseBy(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+    def _mk_phase_Bz(im, it, il, pk):
+        return lambda y: ERPP_phaseBz(y, imode_=im, imode_t_=it, imode_l_=il, phik_=pk)
+
     fct_amp_By = []
     fct_amp_Bz = []
     fct_phase_By = []
@@ -1043,18 +1088,22 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
             elif rpp_per_mode=='ISI':
                 phik_mode = phik_base.copy()
-                delta_t_echelon = 1.5 * 2*pi / (2 * m_broadband * omega_m)
-                omega_k = omega * (1. + mode * omega_m / omega)
+                delta_t_echelon = rpp_seed_per_mode[0] * 2*pi / (2 * m_broadband * omega_m)
+                omega_k = omega * (1. + (mode+mode_offsets[mode+m_broadband]) * omega_m / omega)
                 for i in range(0,N):
                     phik_mode[i] += omega_k * i * delta_t_echelon
                 phik_mode = phik_mode % (2*pi)
                 phik = phik_mode
             else :
                 phik = 1*phik
-            fct_amp_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_amp_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_By.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_Bz.append(lambda y,imode_tmp=mode,imode_t_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            fct_amp_By.append(_mk_amp_By(mode, 0, 0, phik))
+            fct_amp_Bz.append(_mk_amp_Bz(mode, 0, 0, phik))
+            fct_phase_By.append(_mk_phase_By(mode, 0, 0, phik))
+            fct_phase_Bz.append(_mk_phase_Bz(mode, 0, 0, phik))
         fct_amp_By = np.array(fct_amp_By)
         fct_amp_Bz = np.array(fct_amp_Bz)
         fct_phase_By = np.array(fct_phase_By)
@@ -1062,10 +1111,14 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
     else :
         for mode_t in modes_trans :
             for mode_l in modes_longi :
-                fct_amp_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                fct_amp_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                fct_phase_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                fct_phase_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_amp_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_amp_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_phase_By.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                #fct_phase_Bz.append(lambda y,imode_tmp=0,imode_t_tmp=mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,imode_=imode_tmp,imode_t_=imode_t_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                fct_amp_By.append(_mk_amp_By(0, mode_t, mode_l, phik))
+                fct_amp_Bz.append(_mk_amp_Bz(0, mode_t, mode_l, phik))
+                fct_phase_By.append(_mk_phase_By(0, mode_t, mode_l, phik))
+                fct_phase_Bz.append(_mk_phase_Bz(0, mode_t, mode_l, phik))
         fct_amp_By = np.reshape(np.array(fct_amp_By),(2*m_trans+1,2*m_longi+1))
         fct_amp_Bz = np.reshape(np.array(fct_amp_Bz),(2*m_trans+1,2*m_longi+1))
         fct_phase_By = np.reshape(np.array(fct_phase_By),(2*m_trans+1,2*m_longi+1))
@@ -1076,7 +1129,7 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
             im = int(mode+m_broadband)
             Laser(
                 box_side       = box_side,
-                omega          = omega*(1.+mode*omega_m/omega),
+                omega          = omega*(1.+(mode+mode_offsets[im])*omega_m/omega),
                 # omega          = omega,
                 # chirp_profile  = tpolynomial(t0=0.0, order0=(1.+mode*omega_m/omega))
                 time_envelope  = time_envelope,
@@ -1282,9 +1335,11 @@ def transform_3d(x,y,z,xf,yf,zf,L,ang) :
 
 def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_angle=0.,polarization_phi=0.,ellipticity=0.,phase_zero=0.,
                Lf=3.00e6,fnumber=8.00,
-               N=[6,6],rpp_random_seed=10.,
-               temporal_smoothing=None,temporal_smoothing_random_seed=42,
-               omega_m=0.,modulation_depth=0,rpp_per_mode=False,rpp_seed_per_mode=[42],
+               N=[6,6],rpp_random_seed=42,
+               temporal_smoothing=None,
+               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
+               rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,direction='y',chirp_profile=tconstant(),
                omega_m_longi=0.,modulation_depth_longi=0,mode2generate_longi=None,
                space_envelope=lambda y,z:1.,time_envelope=tconstant()):
@@ -1299,14 +1354,17 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     temporal_smoothing     : None/'Broadband'/'TSSD'/'LSSD'
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/'Stardriver'/'ISI' : Change the RPP for each mode
-    rpp_seed_per_mode      : Seed for RRP
+    frequency_comb         : False/True mode are equally spaced (modulation time) or not (no modulation time)
+    mode_locking           : False/True mode have randomly chosen phase or not
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Same RPP for each mode / Change the RPP for each mode / Phase delay per mode
+    rpp_seed_per_mode      : Seed for RRP or [parameter] for ISI echelon
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
     modulation_depth_trans : depth 'm' of modulation and frequency bandwith = 2m for transverse SSD
     modulation_depth_longi : depth 'm' of modulation and frequency bandwith = 2m for longitudinal SSD
     direction              : direction of transverse TSSD : 'y' or 'z'
     '''
+
     import numpy as np
     from math import pi, sqrt, cos, sin, tan, fabs
     from cmath import exp,rect,polar
@@ -1338,7 +1396,7 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
         modulation_depth_trans=0
 
     if len(Main)==0:
-        raise Exception("LaserRPP2D profile has been defined before `Main()`") 
+        raise Exception("LaserSmoothing3D profile has been defined before `Main()`") 
         
     k0 = omega
     Ny,Nz = N[0],N[1]
@@ -1391,13 +1449,17 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     modes_broadband = range(-m_broadband,m_broadband+1,1)
     
     if temporal_smoothing=='Broadband':
-        if temporal_smoothing_random_seed != None :
-            np.random.seed(temporal_smoothing_random_seed)
-            phase_w = 2*pi*np.random.rand(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        if frequency_comb :
+            mode_offsets = np.zeros(len(modes_broadband))
         else :
-            phase_w = np.zeros(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+            np.random.seed(temporal_freq_random_seed)
+            mode_offsets = np.random.uniform(-0.5,0.5,len(modes_broadband))
+        if mode_locking :
+            phase_w = np.zeros(len(modes_broadband)) 
+        else :
+            np.random.seed(temporal_phi_random_seed)
+            phase_w = 2*pi*np.random.rand(len(modes_broadband))
+        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
 
     def ERPP(y,z,imode,imode_tY,imode_tZ,imode_l,phik) :
         '''
@@ -1473,6 +1535,16 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
     def ERPP_phaseBy(y,z,imode_,imode_tY_,imode_tZ_,imode_l_,phik_) :
         return ERPP(y,z,imode=imode_,imode_tY=imode_tY_,imode_tZ=imode_tZ_,imode_l=imode_l_,phik=phik_)[1]-phase_zero+delay_phase[1]
 
+    # Encapsulated function to avoid warning
+    def _mk_amp_By(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_ampBy(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+    def _mk_amp_Bz(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_ampBz(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+    def _mk_phase_By(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_phaseBy(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+    def _mk_phase_Bz(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_phaseBz(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+
     fct_amp_By = []
     fct_amp_Bz = []
     fct_phase_By = []
@@ -1491,9 +1563,9 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
             elif rpp_per_mode=='ISI':
                 phik_mode = phik_base.copy()
-                delta_t_y = 1.5 * 2*pi / (2 * m_broadband * omega_m)
-                delta_t_z = 1.7 * 2*pi / (2 * m_broadband * omega_m)  # different de y pour avoir 2 echelons 1D separable. Modes indépendants est Ny + Nz et pas Ny x Nz car pas escalier 2D.
-                omega_k = omega * (1. + mode * omega_m / omega)
+                delta_t_y = rpp_seed_per_mode[0] * 2*pi / (2 * m_broadband * omega_m)
+                delta_t_z = rpp_seed_per_mode[1] * 2*pi / (2 * m_broadband * omega_m) # Separable 1D echelon. Ny plus Nz independant beamlet and not Ny x Nz
+                omega_k = omega * (1. + (mode+mode_offsets[mode+m_broadband]) * omega_m / omega)
                 for ny in range(0, Ny):
                     for nz in range(0, Nz):
                         phik_mode[ny*Nz+nz] += omega_k * (ny * delta_t_y + nz * delta_t_z)
@@ -1501,10 +1573,14 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                 phik = phik_mode
             else :
                 phik = 1*phik
-            fct_amp_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_amp_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            fct_amp_By.append(_mk_amp_By(mode, 0, 0, 0, phik))
+            fct_amp_Bz.append(_mk_amp_Bz(mode, 0, 0, 0, phik))
+            fct_phase_By.append(_mk_phase_By(mode, 0, 0, 0, phik))
+            fct_phase_Bz.append(_mk_phase_Bz(mode, 0, 0, 0, phik))
         fct_amp_By = np.array(fct_amp_By)
         fct_amp_Bz = np.array(fct_amp_Bz)
         fct_phase_By = np.array(fct_phase_By)
@@ -1513,15 +1589,23 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
         for mode_t in modes_trans :
             for mode_l in modes_longi :
                 if (m_trans==0) | (direction=='y') :
-                    fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    fct_amp_By.append(_mk_amp_By(0, mode_t, 0, mode_l, phik))
+                    fct_amp_Bz.append(_mk_amp_Bz(0, mode_t, 0, mode_l, phik))
+                    fct_phase_By.append(_mk_phase_By(0, mode_t, 0, mode_l, phik))
+                    fct_phase_Bz.append(_mk_phase_Bz(0, mode_t, 0, mode_l, phik))
                 elif direction=='z':
-                    fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    fct_amp_By.append(_mk_amp_By(0, 0, mode_t, mode_l, phik))
+                    fct_amp_Bz.append(_mk_amp_Bz(0, 0,mode_t, 0, mode_l, phik))
+                    fct_phase_By.append(_mk_phase_By(0, 0, mode_t, mode_l, phik))
+                    fct_phase_Bz.append(_mk_phase_Bz(0, 0, mode_t, mode_l, phik))
                 else :
                      raise Exception(" m_trans != 0 and direction for transverse SSD unknown : Have to be 'y' or 'z' ")
         fct_amp_By = np.reshape(np.array(fct_amp_By),(2*m_trans+1,2*m_longi+1))
@@ -1534,7 +1618,7 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
             im = int(mode+m_broadband)
             Laser(
                 box_side       = box_side,
-                omega          = omega*(1.+mode*omega_m/omega),
+                omega          = omega*(1.+(mode+mode_offsets[im])*omega_m/omega),
                 # omega          = omega,
                 # chirp_profile  = tpolynomial(t0=0.0, order0=(1.+mode*omega_m/omega))
                 time_envelope  = time_envelope,
@@ -1607,9 +1691,11 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
 
 def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_angle=0.,polarization_phi=0.,ellipticity=0.,phase_zero=0.,
                Lf=3.00e6,fnumber=8.00,
-               N=[6,6],rpp_random_seed=10.,
-               temporal_smoothing=None,temporal_smoothing_random_seed=42,
-               omega_m=0.,modulation_depth=0,rpp_per_mode=False,rpp_seed_per_mode=[42],
+               N=[6,6],rpp_random_seed=42,
+               temporal_smoothing=None,
+               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
+               rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,direction='y',chirp_profile=tconstant(),
                omega_m_longi=0.,modulation_depth_longi=0,mode2generate_longi=None,
                space_envelope=lambda y,z:1.,time_envelope=tconstant()):
@@ -1624,8 +1710,10 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
     temporal_smoothing     : None/'Broadband'/'TSSD'/'LSSD'
     omega_m                : modulation frequency for Broadband Laser
     modulation_depth       : depth 'm' of modulation and frequency bandwith = 2m for Broadband Laser
-    rpp_per_mode           : False/'Stardriver'/'ISI' : Change the RPP for each mode
-    rpp_seed_per_mode      : Seed for RRP
+    frequency_comb         : False/True mode are equally spaced (modulation time) or not (no modulation time)
+    mode_locking           : False/True mode have randomly chosen phase or not
+    rpp_per_mode           : False/'Stardriver'/'ISI' : Same RPP for each mode / Change the RPP for each mode / Phase delay per mode
+    rpp_seed_per_mode      : Seed for RRP or [parameter] for ISI echelon
     omega_m_trans          : modulation frequency for transverse TSSD
     omega_m_longi          : modulation frequency for longitudinal LSSD
     modulation_depth_trans : depth 'm' of modulation and frequency bandwith = 2m for transverse SSD
@@ -1663,7 +1751,7 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
         modulation_depth_trans=0
 
     if len(Main)==0:
-        raise Exception("LaserRPP2D profile has been defined before `Main()`") 
+        raise Exception("LaserSmoothingPeriodic3D profile has been defined before `Main()`") 
         
     k0 = omega
     Ny,Nz = N[0],N[1]
@@ -1716,13 +1804,17 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
     modes_broadband = range(-m_broadband,m_broadband+1,1)
     
     if temporal_smoothing=='Broadband':
-        if temporal_smoothing_random_seed != None :
-            np.random.seed(temporal_smoothing_random_seed)
-            phase_w = 2*pi*np.random.rand(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        if frequency_comb :
+            mode_offsets = np.zeros(len(modes_broadband))
         else :
-            phase_w = np.zeros(len(modes_broadband))
-            Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+            np.random.seed(temporal_freq_random_seed)
+            mode_offsets = np.random.uniform(-0.5,0.5,len(modes_broadband))
+        if mode_locking :
+            phase_w = np.zeros(len(modes_broadband)) 
+        else :
+            np.random.seed(temporal_phi_random_seed)
+            phase_w = 2*pi*np.random.rand(len(modes_broadband))
+        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
 
     def ERPP(y,z,imode,imode_tY,imode_tZ,imode_l,phik) :
         '''
@@ -1778,6 +1870,16 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
     def ERPP_phaseBy(y,z,imode_,imode_tY_,imode_tZ_,imode_l_,phik_) :
         return ERPP(y,z,imode=imode_,imode_tY=imode_tY_,imode_tZ=imode_tZ_,imode_l=imode_l_,phik=phik_)[1]-phase_zero+delay_phase[1]
 
+    # Encapsulated function to avoid warning
+    def _mk_amp_By(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_ampBy(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+    def _mk_amp_Bz(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_ampBz(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+    def _mk_phase_By(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_phaseBy(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+    def _mk_phase_Bz(im, itY, itZ, il, pk):
+        return lambda y,z: ERPP_phaseBz(y, z, imode_=im, imode_tY_=itY, imode_tZ_=itZ, imode_l_=il, phik_=pk)
+
     fct_amp_By = []
     fct_amp_Bz = []
     fct_phase_By = []
@@ -1796,9 +1898,9 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
                     phik[i] = 2*pi*phikinit[i] # remplissage avec phi entre 0 et 2pi
             elif rpp_per_mode=='ISI':
                 phik_mode = phik_base.copy()
-                delta_t_y = 1.5 * 2*pi / (2 * m_broadband * omega_m)
-                delta_t_z = 1.7 * 2*pi / (2 * m_broadband * omega_m)  # different de y pour avoir 2 echelons 1D separable. Modes indépendants est Ny + Nz et pas Ny x Nz car pas escalier 2D.
-                omega_k = omega * (1. + mode * omega_m / omega)
+                delta_t_y = rpp_seed_per_mode[0] * 2*pi / (2 * m_broadband * omega_m)
+                delta_t_z = rpp_seed_per_mode[1] * 2*pi / (2 * m_broadband * omega_m) # Separable 1D echelon. Ny plus Nz independant beamlet and not Ny x Nz
+                omega_k = omega * (1. + (mode+mode_offsets[mode+m_broadband]) * omega_m / omega)
                 for ny in range(0, Ny):
                     for nz in range(0, Nz):
                         phik_mode[ny*Nz+nz] += omega_k * (ny * delta_t_y + nz * delta_t_z)
@@ -1806,10 +1908,14 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
                 phik = phik_mode
             else :
                 phik = 1*phik
-            fct_amp_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_amp_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-            fct_phase_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_amp_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_By.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            #fct_phase_Bz.append(lambda y,z,imode_tmp=mode,imode_tY_tmp=0,imode_tZ_tmp=0,imode_l_tmp=0,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+            fct_amp_By.append(_mk_amp_By(mode, 0, 0, 0, phik))
+            fct_amp_Bz.append(_mk_amp_Bz(mode, 0, 0, 0, phik))
+            fct_phase_By.append(_mk_phase_By(mode, 0, 0, 0, phik))
+            fct_phase_Bz.append(_mk_phase_Bz(mode, 0, 0, 0, phik))
         fct_amp_By = np.array(fct_amp_By)
         fct_amp_Bz = np.array(fct_amp_Bz)
         fct_phase_By = np.array(fct_phase_By)
@@ -1818,15 +1924,23 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
         for mode_t in modes_trans :
             for mode_l in modes_longi :
                 if (m_trans==0) | (direction=='y') :
-                    fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=1*mode_t,imode_tZ_tmp=0*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    fct_amp_By.append(_mk_amp_By(0, mode_t, 0, mode_l, phik))
+                    fct_amp_Bz.append(_mk_amp_Bz(0, mode_t, 0, mode_l, phik))
+                    fct_phase_By.append(_mk_phase_By(0, mode_t, 0, mode_l, phik))
+                    fct_phase_Bz.append(_mk_phase_Bz(0, mode_t, 0, mode_l, phik))
                 elif direction=='z':
-                    fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
-                    fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_amp_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_ampBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_By.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBy(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    #fct_phase_Bz.append(lambda y,z,imode_tmp=0,imode_tY_tmp=0*mode_t,imode_tZ_tmp=1*mode_t,imode_l_tmp=mode_l,phik_tmp=phik: ERPP_phaseBz(y,z,imode_=imode_tmp,imode_tY_=imode_tY_tmp,imode_tZ_=imode_tZ_tmp,imode_l_=imode_l_tmp,phik_=phik_tmp))
+                    fct_amp_By.append(_mk_amp_By(0, 0, mode_t, mode_l, phik))
+                    fct_amp_Bz.append(_mk_amp_Bz(0, 0,mode_t, 0, mode_l, phik))
+                    fct_phase_By.append(_mk_phase_By(0, 0, mode_t, mode_l, phik))
+                    fct_phase_Bz.append(_mk_phase_Bz(0, 0, mode_t, mode_l, phik))
                 else :
                      raise Exception(" m_trans != 0 and direction for transverse SSD unknown : Have to be 'y' or 'z' ")
         fct_amp_By = np.reshape(np.array(fct_amp_By),(2*m_trans+1,2*m_longi+1))
@@ -1839,7 +1953,7 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
             im = int(mode+m_broadband)
             Laser(
                 box_side       = box_side,
-                omega          = omega*(1.+mode*omega_m/omega),
+                omega          = omega*(1.+(mode+mode_offsets[im])*omega_m/omega),
                 # omega          = omega,
                 # chirp_profile  = tpolynomial(t0=0.0, order0=(1.+mode*omega_m/omega))
                 time_envelope  = time_envelope,

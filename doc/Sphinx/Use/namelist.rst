@@ -1701,11 +1701,14 @@ For two-dimensional simulations, you may use the specific laser creator for defi
         Lf                             = 3.00e6,
         fnumber                        = 8.00,
         N                              = 6,
-        rpp_random_seed                = 10,
+        rpp_random_seed                = 42,
         temporal_smoothing             = None,
-        temporal_smoothing_random_seed = 42,
         omega_m                        = 0.,
         modulation_depth               = 0,
+        frequency_comb                 = False,
+        mode_locking                   = False,
+        temporal_freq_random_seed      = 1789,
+        temporal_phi_random_seed       = 1793,
         rpp_per_mode                   = False,
         rpp_seed_per_mode              = [42],
         omega_m_trans                  = 0.,
@@ -1714,7 +1717,7 @@ For two-dimensional simulations, you may use the specific laser creator for defi
         omega_m_longi                  = 0.,
         modulation_depth_longi         = 0,
         mode2generate_longi            = None,
-        space_envelope                 = lambda y,z:1.,
+        space_envelope                 = lambda y:1.,
         time_envelope                  = tconstant(),
         chirp_profile                  = tconstant()
     )
@@ -1831,11 +1834,6 @@ In order to take into account the temporal behaviour of the field and the bandwi
     :default: None
 
     Type of temporal smoothing ``None/"Broadband"/"TSSD"/"LSSD"``
-      
-  .. py:data:: temporal_smoothing_random_seed
-
-    :type: integer
-    :default: 42
 
     Seed in order to have a Random Phase for each mode for ``"Broadband Laser"``
       
@@ -1852,20 +1850,34 @@ In order to take into account the temporal behaviour of the field and the bandwi
     :default: 0
   
     For ``"Broadband Laser"``, depth *'m'* of modulation and frequency bandwith = 2m
-      
+
+  .. py:data:: frequency_comb
+
+    :type: bool
+    :default: False
+
+    Force mode to be equally spaced introducing a modulation time or not (modulation time fades)
+
+  .. py:data:: mode_locking
+
+    :type: bool
+    :default: False
+
+    Force mode to be locked in its origin phase (at 0) producing intense pulse. If not, mode phases are randomized.
+  
   .. py:data:: rpp_per_mode
        
-   :type: bool
+   :type: bool or a string
    :default: False
  
-   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode accordingly to smoothing method ``"Stardriver"`` or ``"ISI"``. When set to ``"Stardriver"`` each mode have it's own independant Random Phase Plate. If ``"ISI"`` it apply a linear phase shift along for each mode on one unique and shared Random Phase Plate. 
+   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode accordingly to smoothing method, ``"Stardriver"`` or ``"ISI"``. When set to ``"Stardriver"`` each mode have it's own independant Random Phase Plate. If ``"ISI"`` it apply a linear phase shift along for each mode on one unique and shared Random Phase Plate. 
       
   .. py:data:: rpp_seed_per_mode
       
     :type: a list of *int*
     :default: [42]
  
-    For ``"Broadband Laser"``, if ``"Stardriver"`` is set, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
+    For ``"Broadband Laser"``, if ``"Stardriver"`` is set, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1. For ``"ISI"`` only the first element of the list is read, defining the echelon parameter, where 1.5 is recommanded.
       
   .. py:data:: omega_m_trans
 
@@ -1970,11 +1982,14 @@ For three-dimensional simulations, you may use the specific laser creator for de
         Lf                             = 3.00e6,
         fnumber                        = 8.00,
         N                              = [6,6],
-        rpp_random_seed                = 10.,
+        rpp_random_seed                = 42,
         temporal_smoothing             = None,
-        temporal_smoothing_random_seed = 42,
         omega_m                        = 0.,
         modulation_depth               = 0,
+        frequency_comb                 = False,
+        mode_locking                   = False,
+        temporal_freq_random_seed      = 1789,
+        temporal_phi_random_seed       = 1793,
         rpp_per_mode                   = False,
         rpp_seed_per_mode              = [42],
         omega_m_trans                  = 0.,
@@ -2095,7 +2110,7 @@ In order to take into account the temporal behaviour of the field and the bandwi
   .. py:data:: rpp_random_seed
 
     :type: integer
-    :default: 10
+    :default: 42
 
     ``None`` or an int to chose a seed in order to define each phase element of a random phase plate (``None`` is equal no random, all element have zero phase-shift)
       
@@ -2105,11 +2120,6 @@ In order to take into account the temporal behaviour of the field and the bandwi
     :default: None
 
     Type of temporal smoothing ``None/"Broadband"/"TSSD"/"LSSD"``
-      
-  .. py:data:: temporal_smoothing_random_seed
-
-    :type: integer
-    :default: 42
 
     Seed in order to have a Random Phase for each mode for ``"Broadband Laser"``
       
@@ -2126,21 +2136,35 @@ In order to take into account the temporal behaviour of the field and the bandwi
     :default: 0
   
     For ``"Broadband Laser"``, depth *'m'* of modulation and frequency bandwith = 2m
-      
-  .. py:data:: rpp_per_mode
+
+  .. py:data:: frequency_comb
+
+    :type: bool
+    :default: False
+
+    Force mode to be equally spaced introducing a modulation time or not (modulation time fades)
+
+  .. py:data:: mode_locking
+
+    :type: bool
+    :default: False
+
+    Force mode to be locked in its origin phase (at 0) producing intense pulse. If not, mode phases are randomized.
   
-   :type: bool
+  .. py:data:: rpp_per_mode
+       
+   :type: bool or a string
    :default: False
  
-   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode accordingly to smoothing method ``"Stardriver"`` or ``"ISI"``. When set to ``"Stardriver"`` each mode have it's own independant Random Phase Plate. If ``"ISI"`` it apply a linear phase shift along for each mode on one unique and shared Random Phase Plate.
+   For ``"Broadband Laser"``, Change the Random Phase Plate for each mode accordingly to smoothing method, ``"Stardriver"`` or ``"ISI"``. When set to ``"Stardriver"`` each mode have it's own independant Random Phase Plate. If ``"ISI"`` it apply a linear phase shift along for each mode on one unique and shared Random Phase Plate. 
       
   .. py:data:: rpp_seed_per_mode
- 
+      
     :type: a list of *int*
     :default: [42]
  
-    For ``"Broadband Laser"``, when ``"Stardriver"`` is set, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1
-      
+    For ``"Broadband Laser"``, if ``"Stardriver"`` is set, a list of seed for each RRP. `len(rpp_seed_per_mode)` have to be the same as 2*modulation_depth+1. For ``"ISI"`` only the first element of the list is read, defining the echelon parameter, where 1.5 is recommanded.
+
   .. py:data:: omega_m_trans
 
     :type: double
@@ -2628,7 +2652,7 @@ This feature is accessible using the ``PrescribedField`` block::
 
   from numpy import cos, sin
   def myPrescribedProfile(x,t):
-  	return cos(x)*sin(t)
+        return cos(x)*sin(t)
 
   PrescribedField(
       field = "Ex",
@@ -3281,12 +3305,12 @@ This is done by including a block ``DiagFields``::
 
     from numpy import s_
     DiagFields( #...
-    	subgrid = s_[::2, ::2, ::2]
+        subgrid = s_[::2, ::2, ::2]
     )
 
   while this one selects cell indices included in a contiguous parallelepiped::
 
-    	subgrid = s_[100:300, 300:500, 300:600]
+        subgrid = s_[100:300, 300:500, 300:600]
 
 
 .. py:data:: datatype
@@ -3599,46 +3623,46 @@ for instance::
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["x",    0.,    1.,    30] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["x",    0.,    1.,    30] ]
     )
 
 * Density map from :math:`x=0` to 1, :math:`y=0` to 1
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["x",    0.,    1.,    30],
-    	         ["y",    0.,    1.,    30] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["x",    0.,    1.,    30],
+                 ["y",    0.,    1.,    30] ]
     )
 
 * Velocity distribution from :math:`v_x = -0.1` to :math:`0.1`
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["vx",   -0.1,    0.1,    100] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["vx",   -0.1,    0.1,    100] ]
     )
 
 * Phase space from :math:`x=0` to 1 and from :math:`px=-1` to 1
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["x",    0.,    1.,    30],
-    	         ["px",   -1.,   1.,    100] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["x",    0.,    1.,    30],
+                 ["px",   -1.,   1.,    100] ]
     )
 
 * Energy distribution from 0.01 to 1 MeV in logarithmic scale.
@@ -3646,11 +3670,11 @@ for instance::
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["ekin",    0.02,    2.,   100, "logscale"] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["ekin",    0.02,    2.,   100, "logscale"] ]
     )
 
 * :math:`x`-:math:`y` density maps for three bands of energy: :math:`[0,1]`, :math:`[1,2]`, :math:`[2,\infty]`.
@@ -3658,24 +3682,24 @@ for instance::
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["x",    0.,    1.,    30],
-    	         ["y",    0.,    1.,    30],
-    	         ["ekin", 0.,    6.,    3,  "edge_inclusive"] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["x",    0.,    1.,    30],
+                 ["y",    0.,    1.,    30],
+                 ["ekin", 0.,    6.,    3,  "edge_inclusive"] ]
     )
 
 * Charge distribution from :math:`Z^\star =0` to 10
   ::
 
     DiagParticleBinning(
-    	deposited_quantity = "weight",
-    	every = 5,
-    	time_average = 1,
-    	species = ["electron1"],
-    	axes = [ ["charge",    -0.5,   10.5,   11] ]
+        deposited_quantity = "weight",
+        every = 5,
+        time_average = 1,
+        species = ["electron1"],
+        axes = [ ["charge",    -0.5,   10.5,   11] ]
     )
 
 
@@ -4242,3 +4266,4 @@ namelist. They should not be re-defined by the user!
   
   These variables can be access during ``happi`` post-processing, e.g.
   ``S.namelist.smilei_mpi_size``.
+
