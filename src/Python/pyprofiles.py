@@ -605,7 +605,7 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                Lf=3.00e6,fnumber=8.00,
                N=6,rpp_random_seed=42,
                temporal_smoothing=None,
-               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               omega_m=0.,modulation_depth=0,spectral_profile=lambda w: 1.,frequency_comb=False,mode_locking=False,
                temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
                rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,chirp_profile=tconstant(),
@@ -708,7 +708,25 @@ def LaserSmoothing2D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
         else :
             np.random.seed(temporal_phi_random_seed)
             phase_w = 2*pi*np.random.rand(len(modes_broadband))
-        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+
+        # Legacy
+        # Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+
+        if not callable(spectral_profile):
+            raise Exception("spectral_profile must be a callable function of omega, e.g. lambda w: 1.")
+        
+        # Example 1 for intensity spectrum : Gaussian
+        # sigma = 10 * omega_m
+        # spectral_profile = lambda w: np.exp(-(w - omega)**2 / (2*sigma**2))
+        # Example 2 for intensity spectrum : Lorentzian
+        # gamma = 5 * omega_m
+        # spectral_profile = lambda w: gamma / ((w - omega)**2 + gamma**2)
+        # Default : Flat
+        # spectral_profile = lambda w: 1.
+        
+        Ebb = np.array([spectral_profile(omega * (1. + (mode + mode_offsets[int(mode+m_broadband)]) * omega_m / omega)) for mode in modes_broadband])
+        # Normalization : sum of all spectral intensity line = 1
+        Ebb = Ebb / np.sqrt(np.sum(Ebb**2))
             
 
     def ERPP(y,imode,imode_t,imode_l,phik) :
@@ -912,7 +930,7 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
                Lf=3.00e6,fnumber=8.00,
                N=6,rpp_random_seed=42,
                temporal_smoothing=None,
-               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               omega_m=0.,modulation_depth=0,spectral_profile=lambda w: 1.,frequency_comb=False,mode_locking=False,
                temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
                rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,chirp_profile=tconstant(),
@@ -1015,7 +1033,26 @@ def LaserSmoothingPeriodic2D(box_side="xmin", a0=1., omega=1., focus=None, incid
         else :
             np.random.seed(temporal_phi_random_seed)
             phase_w = 2*pi*np.random.rand(len(modes_broadband))
-        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        
+        # Legacy
+        # Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+
+        if not callable(spectral_profile):
+            raise Exception("spectral_profile must be a callable function of omega, e.g. lambda w: 1.")
+
+        # Example 1 for intensity spectrum : Gaussian
+        # sigma = 10 * omega_m
+        # spectral_profile = lambda w: np.exp(-(w - omega)**2 / (2*sigma**2))
+        # Example 2 for intensity spectrum : Lorentzian
+        # gamma = 5 * omega_m
+        # spectral_profile = lambda w: gamma / ((w - omega)**2 + gamma**2)
+        # Default : Flat
+        # spectral_profile = lambda w: 1.
+
+        Ebb = np.array([spectral_profile(omega * (1. + (mode + mode_offsets[int(mode+m_broadband)]) * omega_m / omega)) for mode in modes_broadband])
+        # Normalization : sum of all spectral intensity line = 1
+        Ebb = Ebb / np.sqrt(np.sum(Ebb**2))
+
 
     def ERPP(y,imode,imode_t,imode_l,phik) :
         '''
@@ -1337,7 +1374,7 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
                Lf=3.00e6,fnumber=8.00,
                N=[6,6],rpp_random_seed=42,
                temporal_smoothing=None,
-               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               omega_m=0.,modulation_depth=0,spectral_profile=lambda w: 1.,frequency_comb=False,mode_locking=False,
                temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
                rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,direction='y',chirp_profile=tconstant(),
@@ -1459,7 +1496,26 @@ def LaserSmoothing3D(box_side="xmin", a0=1., omega=1., focus=None, incidence_ang
         else :
             np.random.seed(temporal_phi_random_seed)
             phase_w = 2*pi*np.random.rand(len(modes_broadband))
-        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        
+        # Legacy
+        # Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+
+        if not callable(spectral_profile):
+            raise Exception("spectral_profile must be a callable function of omega, e.g. lambda w: 1.")
+
+        # Example 1 for intensity spectrum : Gaussian
+        # sigma = 10 * omega_m
+        # spectral_profile = lambda w: np.exp(-(w - omega)**2 / (2*sigma**2))
+        # Example 2 for intensity spectrum : Lorentzian
+        # gamma = 5 * omega_m
+        # spectral_profile = lambda w: gamma / ((w - omega)**2 + gamma**2)
+        # Default : Flat
+        # spectral_profile = lambda w: 1.
+
+        Ebb = np.array([spectral_profile(omega * (1. + (mode + mode_offsets[int(mode+m_broadband)]) * omega_m / omega)) for mode in modes_broadband])
+        # Normalization : sum of all spectral intensity line = 1
+        Ebb = Ebb / np.sqrt(np.sum(Ebb**2))
+
 
     def ERPP(y,z,imode,imode_tY,imode_tZ,imode_l,phik) :
         '''
@@ -1693,7 +1749,7 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
                Lf=3.00e6,fnumber=8.00,
                N=[6,6],rpp_random_seed=42,
                temporal_smoothing=None,
-               omega_m=0.,modulation_depth=0,frequency_comb=False,mode_locking=False,
+               omega_m=0.,modulation_depth=0,spectral_profile=lambda w: 1.,frequency_comb=False,mode_locking=False,
                temporal_freq_random_seed=1789,temporal_phi_random_seed=1793,
                rpp_per_mode=False,rpp_seed_per_mode=[42],
                omega_m_trans=0.,modulation_depth_trans=0,mode2generate_trans=None,direction='y',chirp_profile=tconstant(),
@@ -1814,7 +1870,25 @@ def LaserSmoothingPeriodic3D(box_side="xmin", a0=1., omega=1., focus=None, incid
         else :
             np.random.seed(temporal_phi_random_seed)
             phase_w = 2*pi*np.random.rand(len(modes_broadband))
-        Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+        
+        # Legacy
+        # Ebb = np.ones(len(modes_broadband))/np.sqrt(len(modes_broadband))
+
+        if not callable(spectral_profile):
+            raise Exception("spectral_profile must be a callable function of omega, e.g. lambda w: 1.")
+
+        # Example 1 for intensity spectrum : Gaussian
+        # sigma = 10 * omega_m
+        # spectral_profile = lambda w: np.exp(-(w - omega)**2 / (2*sigma**2))
+        # Example 2 for intensity spectrum : Lorentzian
+        # gamma = 5 * omega_m
+        # spectral_profile = lambda w: gamma / ((w - omega)**2 + gamma**2)
+        # Default : Flat
+        # spectral_profile = lambda w: 1.
+
+        Ebb = np.array([spectral_profile(omega * (1. + (mode + mode_offsets[int(mode+m_broadband)]) * omega_m / omega)) for mode in modes_broadband])
+        # Normalization : sum of all spectral intensity line = 1
+        Ebb = Ebb / np.sqrt(np.sum(Ebb**2))
 
     def ERPP(y,z,imode,imode_tY,imode_tZ,imode_l,phik) :
         '''

@@ -1705,6 +1705,7 @@ For two-dimensional simulations, you may use the specific laser creator for defi
         temporal_smoothing             = None,
         omega_m                        = 0.,
         modulation_depth               = 0,
+        spectral_profile               = lambda w: 1.,
         frequency_comb                 = False,
         mode_locking                   = False,
         temporal_freq_random_seed      = 1789,
@@ -1851,6 +1852,13 @@ In order to take into account the temporal behaviour of the field and the bandwi
   
     For ``"Broadband Laser"``, depth *'m'* of modulation and frequency bandwith = 2m
 
+  .. py:data:: spectral_profile
+
+    :type: a function of omega
+    :default: lambda w: 1.
+
+    For ``"Broadband Laser"``, shape of the spectral intensity. At the end all spectral lines are normalized.
+
   .. py:data:: frequency_comb
 
     :type: bool
@@ -1986,6 +1994,7 @@ For three-dimensional simulations, you may use the specific laser creator for de
         temporal_smoothing             = None,
         omega_m                        = 0.,
         modulation_depth               = 0,
+        spectral_profile               = lambda w: 1.,
         frequency_comb                 = False,
         mode_locking                   = False,
         temporal_freq_random_seed      = 1789,
@@ -2136,6 +2145,13 @@ In order to take into account the temporal behaviour of the field and the bandwi
     :default: 0
   
     For ``"Broadband Laser"``, depth *'m'* of modulation and frequency bandwith = 2m
+
+  .. py:data:: spectral_profile
+
+    :type: a function of omega
+    :default: lambda w: 1.
+
+    For ``"Broadband Laser"``, shape of the spectral intensity. At the end all spectral lines are normalized.
 
   .. py:data:: frequency_comb
 
