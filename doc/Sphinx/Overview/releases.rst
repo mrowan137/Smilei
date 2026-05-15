@@ -41,8 +41,7 @@ Changes made in the repository (not released)
   * Tunnel ionization supports fullPPT model and 2 BSI models.
   * Prescribed fields with dynamic load balancing.
   * Custom oversize in AM geometry solvers.
-  * New 2D and 3D laser block and profile to help using spatial and temporal smoothed-beam.
-  * LaserEnvelope model: added PML for solver ``"explicit_reduced_dispersion"`` in 2D geometry.
+  * New 2D and 3D laser block and profile to help using spatial and temporal smoothed-beam
 
 * **Bug fixes**:
 
@@ -65,6 +64,7 @@ Changes made in the repository (not released)
   * Fixed segmentation fault when using Multiphoton Breit-Wheeler in ``AMcylindrical`` geometry.
   * Laser envelope model: fixed risk of deadlock for laser injection from ``xmin`` when many OpenMP threads are used.
   * Laser envelope: fixed on-axis noise in AMcylindrical simulations using interpolation order 1.
+  * Fix PML envelope size definition in 3D geometry.
 
 * **Experimental**
 
