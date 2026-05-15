@@ -38,6 +38,7 @@
 #include "PML_Solver3D_Yee.h"
 #include "PML_SolverAM.h"
 #include "PML_Solver2D_Envelope.h"
+#include "PML_Solver2D_EnvelopeReducedDispersion.h"
 #include "PML_Solver3D_Envelope.h"
 #include "PML_SolverAM_Envelope.h"
 #include "PML_SolverAM_EnvelopeReducedDispersion.h"
@@ -237,7 +238,7 @@ public:
                     solver = new PML_Solver2D_Envelope( params );
                 }
                 else if (params.envelope_solver == "explicit_reduced_dispersion") {
-                    ERROR( "PML configuration not implemented yet" );
+                    solver = new PML_Solver2D_EnvelopeReducedDispersion( params );
                 }
                 else {
                     ERROR( "PML configuration not implemented" );
