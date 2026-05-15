@@ -41,7 +41,8 @@ Changes made in the repository (not released)
   * Tunnel ionization supports fullPPT model and 2 BSI models.
   * Prescribed fields with dynamic load balancing.
   * Custom oversize in AM geometry solvers.
-  * New 2D and 3D laser block and profile to help using spatial and temporal smoothed-beam
+  * New 2D and 3D laser block and profile to help using spatial and temporal smoothed-beam.
+  * LaserEnvelope model: added PML for solver ``"explicit_reduced_dispersion"`` in 2D geometry.
 
 * **Bug fixes**:
 
