@@ -21,6 +21,8 @@
 #include "MF_Solver2D_Lehe.h"
 #include "MF_Solver3D_Lehe.h"
 #include "MF_SolverAM_Lehe.h"
+#include "MF_Solver2D_Terzani.h"
+#include "MF_Solver3D_Terzani.h"
 #include "MF_SolverAM_Terzani.h"
 
 #include "MF_Solver1D_M4.h"
@@ -72,8 +74,8 @@ public:
             if( params.is_spectral ) {
                 solver = new PXR_Solver2D_GPSTD( params );
             } else if( params.Friedman_filter ) {
-                if ( (params.maxwell_sol != "Yee") && (params.maxwell_sol != "Bouchard") && (params.maxwell_sol != "Grassi") && (params.maxwell_sol != "GrassiSpL") ){
-                    ERROR( "Only Yee, Bouchard, Grassi and GrassiSpL Maxwell solvers are compatible with Friedman filter in 2Dcartesian geometry" );
+                if ( (params.maxwell_sol != "Yee") && (params.maxwell_sol != "Bouchard") && (params.maxwell_sol != "Grassi") && (params.maxwell_sol != "GrassiSpL") && (params.maxwell_sol != "Terzani") ){
+                    ERROR( "Only Yee, Bouchard, Grassi, GrassiSpL and Terzani Maxwell solvers are compatible with Friedman filter in 2Dcartesian geometry" );
                 }
                 solver = new MA_Solver2D_Friedman( params );
             } else {
@@ -108,7 +110,7 @@ public:
                 solver = new PXR_SolverAM_GPSTD( params );
             } else {
                 if( params.Friedman_filter ) {
-                    if (params.maxwell_sol != "Yee") ERROR( "Only Yee Maxwell solver is compatible with Friedman filter in AMcylindrical geometry" );
+                    if ( (params.maxwell_sol != "Yee") && (params.maxwell_sol != "Terzani") )ERROR( "Only Yee and Terzani Maxwell solver are compatible with Friedman filter in AMcylindrical geometry" );
                     solver = new MA_SolverAM_Friedman( params );
                 } else {
                     solver = new MA_SolverAM_norm( params );
@@ -139,6 +141,8 @@ public:
                 solver = new MF_Solver1D_Yee( params );
             } else if( params.maxwell_sol == "M4" ) {
                 solver = new MF_Solver1D_M4( params );
+            } else if( params.maxwell_sol == "Terzani" ) {
+                ERROR( "In 1D geometry the Terzani solver is equivalent to the M4 solver. Please change Maxwell solver to M4." );
             }
 
         } else if( params.geometry == "2Dcartesian" ) {
@@ -157,6 +161,8 @@ public:
                 solver = new MF_Solver2D_Lehe( params );
             } else if( params.maxwell_sol == "M4" ) {
                 solver = new MF_Solver2D_M4( params );
+            } else if( params.maxwell_sol == "Terzani" ) {
+                solver = new MF_Solver2D_Terzani( params );
             } else if( params.is_spectral ) {
                 solver = new NullSolver();
             }
@@ -171,6 +177,8 @@ public:
                 solver = new MF_Solver3D_Bouchard( params );
             } else if( params.maxwell_sol == "M4" ) {
                 solver = new MF_Solver3D_M4( params );
+            } else if( params.maxwell_sol == "Terzani" ) {
+                solver = new MF_Solver3D_Terzani( params );
             } else if( params.is_pxr ) {
                 solver = new NullSolver();
             }

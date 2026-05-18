@@ -33,6 +33,7 @@ Main(
     print_every = 100,
 
     use_BTIS3_interpolation = True,
+    maxwell_solver = "Terzani",
 
 )
 
