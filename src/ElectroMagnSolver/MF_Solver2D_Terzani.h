@@ -1,16 +1,16 @@
-#ifndef MF_SOLVERAM_TERZANI_H
-#define MF_SOLVERAM_TERZANI_H
+#ifndef MF_SOLVER2D_TERZANI_H
+#define MF_SOLVER2D_TERZANI_H
 
-#include "SolverAM.h"
+#include "Solver2D.h"
 class ElectroMagn;
 
-class MF_SolverAM_Terzani : public SolverAM
+class MF_Solver2D_Terzani : public Solver2D
 {
 
 public:
-    //! Creator for MF_SolverAM_Terzani
-    MF_SolverAM_Terzani( Params &params );
-    virtual ~MF_SolverAM_Terzani();
+    //! Creator for MF_Solver2D_Yee
+    MF_Solver2D_Terzani( Params &params );
+    virtual ~MF_Solver2D_Terzani();
     
     //! Overloading of () operator
     virtual void operator()( ElectroMagn *fields );
