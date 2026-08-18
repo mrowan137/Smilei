@@ -128,6 +128,9 @@ void Patch::initStep1( Params &params )
 
     // Obtain the cell_volume
     cell_volume = params.cell_volume;
+
+    // Initialize rand_ to null to handle regions which do not need a RNG.
+    rand_ = nullptr;
 }
 
 
@@ -473,7 +476,9 @@ Patch::~Patch()
     }
     vecSpecies.clear();
 
-    delete rand_;
+    if (rand_) {
+        delete rand_;
+    }
 
 } // END Patch::~Patch
 
