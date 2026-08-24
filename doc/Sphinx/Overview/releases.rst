@@ -66,6 +66,7 @@ Changes made in the repository (not released)
   * Laser envelope model: fixed risk of deadlock for laser injection from ``xmin`` when many OpenMP threads are used.
   * Laser envelope: fixed on-axis noise in AMcylindrical simulations using interpolation order 1.
   * Fix PML envelope size definition in 3D geometry.
+  * Fix bug of repeated RNG seed  when the moving window is active.
 
 * **Experimental**
 
