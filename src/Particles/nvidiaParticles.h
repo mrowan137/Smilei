@@ -223,6 +223,9 @@ protected:
     //! cell_keys of the particle
     thrust::device_vector<int> nvidia_cell_keys_;
 
+    //! Persistent map used by `sortParticleByKey`
+    thrust::device_vector<int> nvidia_sort_map_;
+
     //! Quantum parameter
     thrust::device_vector<double> nvidia_chi_;
 
